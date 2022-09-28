@@ -1,9 +1,10 @@
-import express from "express";
-import { login, register } from "../controllers/auth.controller.js";
+import { Router } from "express";
+import { infoUser, login, register, refreshToken } from "../controllers/auth.controller.js";
 import { body } from "express-validator";
 import { validationResultExpress } from "../middlewares/validationResultExpress.js";
+import {  logout, requireToken } from "../middlewares/requireToken.js";
 
-const router = express.Router();
+const router = Router();
 
 router.post("/register", [
     body("email", "Formato de Email incorrecto")
@@ -35,6 +36,11 @@ router.post("/login", [
 ],
     validationResultExpress,    
     login);
+
+
+router.get("/protected", requireToken, infoUser)
+router.get("/refresh", refreshToken)
+router.get("/logout", logout)
 
 export default router;
 
