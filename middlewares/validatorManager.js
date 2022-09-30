@@ -25,7 +25,7 @@ export const bodyLinkValidator = [
         .notEmpty()
         .custom(async (value) => {
             try {
-                if (!value.startsWith("https//")) {
+                if (!value.startsWith("https://")) {
                     value = "https://" + value
                 }
 
@@ -40,7 +40,6 @@ export const bodyLinkValidator = [
     //.exists()
     , validationResultExpress
 ]
-
 
 export const bodyRegisterValidator = [
     body("email", "Formato de Email incorrecto")
@@ -59,7 +58,6 @@ export const bodyRegisterValidator = [
         }),
     validationResultExpress
 ]
-
 
 export const bodyLoginValidator = [
     body("email", "Formato de Email incorrecto")
