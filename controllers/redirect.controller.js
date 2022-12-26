@@ -1,4 +1,4 @@
-import { Link } from "../models/Link.js"
+/* import { Link } from "../models/Link.js"
 
 export const redirectLink = async (req, res) => {
     try {
@@ -15,4 +15,4 @@ export const redirectLink = async (req, res) => {
         }
         return res.status(500).json({ error: "error de servidor" })
     }
-}
+} */

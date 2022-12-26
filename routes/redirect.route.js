@@ -1,4 +1,4 @@
-import { Router } from "express";
+/* import { Router } from "express";
 import { redirectLink } from "../controllers/redirect.controller.js";
 
 const router = Router();
@@ -6,4 +6,4 @@ const router = Router();
 router.get("/:nanoLink", redirectLink);
 
 
-export default router;
+export default router; */

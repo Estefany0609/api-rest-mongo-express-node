@@ -1,11 +1,9 @@
-import "dotenv/config" 
-import mongoose from 'mongoose';
+import "dotenv/config"
+import pkg from 'pg';
+const { Pool, Client } = pkg;
 
-try {
-    await mongoose.connect(process.env.URI_MONGO);
-    console.log("Connect DB ok 👋")
-} catch (error) {
-    console.log("Error de conexion a mongoDB: "+ error)
-}
+const connectionString = `postgresql://${process.env.PGUSER}:${process.env.PGPASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.PGDATABASE}?schema=${process.env.PGSCHEMA}`
 
-
+export const pool = new Pool({
+ connectionString,
+})
