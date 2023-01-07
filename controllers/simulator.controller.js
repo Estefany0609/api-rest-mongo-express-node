@@ -37,6 +37,19 @@ export const getPrice = async (req, res) => {
     }
 }
 
+export const getDate = async (req, res) => {
+    try {
+        const { ticker } = req.body;
+
+        let response = await pool.query('SELECT DISTINCT ON (ticker) date FROM web_financial.listado_historico_general where ticker = $1 ORDER BY ticker, date DESC  ', [ticker]);
+        if (!response.rows) throw ({ code: 11000 })
+        return res.json(response.rows)
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json({ error: "error de servidor" })
+    }
+}
+
 export const login = async(req, res) => {
     try {
         const { email, password } = req.body;

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createPosition, getPrice, getSimulator, getTicker, removePosition, updatePosition } from "../controllers/simulator.controller.js";
+import { createPosition, getDate, getPrice, getSimulator, getTicker, removePosition, updatePosition } from "../controllers/simulator.controller.js";
 import { requireToken } from "../middlewares/requireToken.js";
 //import { bodyLinkValidator, paramLinkValidator } from "../middlewares/validatorManager.js";
 const router = Router();
@@ -13,6 +13,8 @@ const router = Router();
 router.get("/", requireToken, getSimulator)
 router.post("/ticker", getTicker)
 router.post("/price", getPrice)
+router.post("/date", getDate)
+
 
 //router.get("/:id", requireToken, getLink)
 //router.get("/:nanoLink", getLink)
