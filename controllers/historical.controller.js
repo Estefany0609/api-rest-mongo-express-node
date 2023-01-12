@@ -49,6 +49,22 @@ export const getSubIndustrias = async (req, res) => {
     }
 }
 
+export const getAverage = async (req, res) => {
+    try {
+        let response = await pool.query(
+            'SELECT count(web_financial.h_p_volume.ticker) count_ticker, sector, industry, sub_industry, cast (AVG (preassure_daily) as decimal (10,2)) calculo_1_day, ' +
+            'cast(AVG(_5_days_presion) as decimal (10, 2)) calculo_5_days, cast(AVG(_10_days_presion) as decimal (10, 2)) calculo_10_days, cast(AVG(_20_days_presion) as decimal (10, 2)) calculo_20_days, ' +
+            ' cast (AVG (_50_days_presion) as decimal (10,2)) calculo_50_days, cast (AVG (_100_days_presion) as decimal (10,2)) calculo_100_days, cast (AVG (_200_days_presion) as decimal (10,2)) calculo_200_days, ' +
+            'cast (AVG (_260_days_presion) as decimal (10,2)) calculo_260_days FROM web_financial.h_p_volume LEFT OUTER JOIN web_financial.tos_sector_matrix on web_financial.h_p_volume.ticker = web_financial.tos_sector_matrix.ticker ' +
+            ' where category = $1 and date = (select max(date) from web_financial.listado_historico_general ) group by sector, industry, sub_industry',  ['stock'] );
+        if (!response.rows) throw ({ code: 11000 }) 
+        return res.json(response.rows)
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json({ error: "error de servidor" })
+    }
+}
+
 /* export const getTicker = async (req, res) => {
     try {
         const { ticker } = req.body;
