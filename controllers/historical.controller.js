@@ -2,7 +2,7 @@ import { pool } from "../database/connectdb.js";
 
 export const getHistoricoDiario = async (req, res) => {
     try {
-        const response = await pool.query('SELECT DISTINCT ON (ticker) * FROM web_financial.listado_historico_general ORDER BY ticker, date DESC ');
+        const response = await pool.query('SELECT * FROM web_financial.listado_historico_general where date = (select max(date) from web_financial.listado_historico_general ) ORDER BY ticker ');
         if (!response.rows) throw ({ code: 11000 })
         return res.json(response.rows)
     } catch (error) {
