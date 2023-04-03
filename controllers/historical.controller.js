@@ -1,4 +1,8 @@
 import { pool } from "../database/connectdb.js";
+import fetch from 'node-fetch'; 
+
+const endpointBase = 'https://financialmodelingprep.com/api/v3/company/profile/';
+const api_key = process.env.API_FINANCIAL;
 
 export const getHistoricoDiario = async (req, res) => {
     try {
@@ -10,7 +14,6 @@ export const getHistoricoDiario = async (req, res) => {
         return res.status(500).json({ error: "error de servidor" })
     }
 }
-
 
 export const getSectores = async (req, res) => {
     try {
@@ -65,28 +68,117 @@ export const getAverage = async (req, res) => {
     }
 }
 
-/* export const getTicker = async (req, res) => {
+export const getTickerSM = async (req, res) => {
     try {
-        const { ticker } = req.body;
-
-        let response = await pool.query('SELECT * FROM web_financial.tos_sector_matrix where ticker like $1 or company_name like $1 ', ["%"+ticker+"%"]);
+        const response = await pool.query('select distinct(ticker) from web_financial.tos_sector_matrix');
         if (!response.rows) throw ({ code: 11000 })
         return res.json(response.rows)
+
     } catch (error) {
         console.log(error)
         return res.status(500).json({ error: "error de servidor" })
     }
 }
 
-export const getPrice = async (req, res) => {
-    try {
-        const { ticker } = req.body;
 
-        let response = await pool.query('SELECT DISTINCT ON (ticker) close FROM web_financial.listado_historico_general where ticker = $1 ORDER BY ticker, date DESC  ', [ticker]);
-        if (!response.rows) throw ({ code: 11000 })
-        return res.json(response.rows)
+export const newProfile = async (req, res) => {
+    try {
+        const { symbols } = req.body;
+        console.log(symbols)
+        console.log("INICIO DEL FOR"); 
+
+        let count = 0;
+        let success = 0;
+        let failure = 0;
+
+        const delay = ms => new Promise(resolve => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
+
+        for (let i = 0; i < symbols.length; i++) {
+            const ticker = symbols[i].ticker;
+            const endpoint = `${endpointBase}${ticker}?apikey=${api_key}`;
+            try {
+                // Realizar la solicitud HTTP a la API
+                const response = await fetch(endpoint);
+
+                if (!response.ok) {
+                    // Si la respuesta no es exitosa, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+                    failure++;
+                    continue;
+                }
+
+                /// Si la respuesta es exitosa, obtener los datos y agregarlos al array profiles
+                const data = await response.json();
+                if (Array.isArray(data) && data.length === 0) {
+                    // Si la respuesta es un array vacío, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+                    failure++;
+                    continue;
+                }
+
+                // Insertar el perfil en la base de datos
+                await pool.query('INSERT INTO web_financial.company_profile (isactivelytrading, address, beta, ceo, cik, city, companyname, country, currency, cusip, dcf, dcfdiff, description, exchange, exchangeshortname, fulltimeemployees, image, industry, ipodate, isadr, isetf, isfund, isin, phone, range, record_date, sector, state, ticker, website, zip) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)',
+                    [data.profile.isActivelyTrading,
+                    data.profile.address,
+                    data.profile.beta,
+                    data.profile.ceo,
+                    data.profile.cik,
+                    data.profile.city,
+                    data.profile.companyName,
+                    data.profile.country,
+                    data.profile.currency,
+                    data.profile.cusip,
+                    data.profile.dcf,
+                    data.profile.dcfDiff,
+                    data.profile.description,
+                    data.profile.exchange,
+                    data.profile.exchangeShortName,
+                    data.profile.fullTimeEmployees,
+                    data.profile.image,
+                    data.profile.industry,
+                    data.profile.ipoDate,
+                    data.profile.isAdr,
+                    data.profile.isEtf,
+                    data.profile.isFund,
+                    data.profile.isin,
+                    data.profile.phone,
+                    data.profile.range,
+                     new Date().toLocaleDateString(),
+                    data.profile.sector,
+                    data.profile.state,
+                    data.symbol,
+                    data.profile.website,
+                    data.profile.zip]);
+
+                success++;
+            } catch (error) {
+                // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+                console.error(error);
+                failure++;
+                continue;
+            }
+
+            // Hacer una pausa de 4 segundos entre cada llamado a la API
+            count++;
+            if (count % 1500 === 0) {
+                console.log(
+                    `Límite de llamados alcanzado. Haciendo una pausa de 1 minuto.`
+                );
+                await delay(120000);
+            } else {
+                await delay(4000);
+            }
+        }
+        console.log("FIN DEL FOR");
+        console.log(`Perfiles exitosos: ${success}, Perfiles fallidos: ${failure}`);
+    
+        
+        return res.json({ success: true, message: "Perfiles guardados exitosamente" });
     } catch (error) {
-        console.log(error)
-        return res.status(500).json({ error: "error de servidor" })
+        console.error(error);
+        return res.status(500).json({ success: false, message: "Ha ocurrido un error al guardar los perfiles" });
     }
-} */
+}
+
+
+//Alternativa buscando por ticker
+       /*  let byTicker = await pool.query('SELECT * FROM web_financial.company_profile WHERE ticker = $1 ', [ticker]);
+        if (byTicker.rows[0]) throw ({ code: 11000 }) */

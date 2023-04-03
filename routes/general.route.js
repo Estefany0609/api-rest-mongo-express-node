@@ -1,13 +1,17 @@
 import { Router } from "express";
-import { getAverage, getHistoricoDiario, getIndustrias, getSectores, getSubIndustrias } from "../controllers/historical.controller.js";
+import { getAverage, newProfile, getTickerSM, getHistoricoDiario, getIndustrias, getSectores, getSubIndustrias } from "../controllers/historical.controller.js";
 import { requireToken } from "../middlewares/requireToken.js";
 const router = Router();
 
 router.get("/", requireToken, getHistoricoDiario)
+router.get("/tickerSM", getTickerSM)
 router.get("/sector", requireToken, getSectores)
 router.get("/preassure", requireToken, getAverage)
 router.post("/industrias", requireToken, getIndustrias)
 router.post("/subIndustrias", requireToken, getSubIndustrias)
+
+router.post("/profile", requireToken, newProfile);
+
 /* router.post("/ticker", getTicker)
 router.post("/price", getPrice)
 
