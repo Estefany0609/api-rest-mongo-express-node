@@ -80,7 +80,6 @@ export const getTickerSM = async (req, res) => {
     }
 }
 
-
 export const newProfile = async (req, res) => {
     try {
         const { symbols } = req.body;
@@ -115,7 +114,7 @@ export const newProfile = async (req, res) => {
                 }
 
                 // Insertar el perfil en la base de datos
-                await pool.query('INSERT INTO web_financial.company_profile (isactivelytrading, address, beta, ceo, cik, city, companyname, country, currency, cusip, dcf, dcfdiff, description, exchange, exchangeshortname, fulltimeemployees, image, industry, ipodate, isadr, isetf, isfund, isin, phone, range, record_date, sector, state, ticker, website, zip) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)',
+                await pool.query('INSERT INTO web_financial.company_profile (isactivelytrading, address, beta, ceo, cik, city, companyname, country, currency, cusip, description, exchange, exchangeshortname, fulltimeemployees, image, industry, ipodate, isadr, isetf, isfund, isin, phone, range, record_date, sector, state, ticker, website, zip) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)',
                     [data.profile.isActivelyTrading,
                     data.profile.address,
                     data.profile.beta,
@@ -126,8 +125,6 @@ export const newProfile = async (req, res) => {
                     data.profile.country,
                     data.profile.currency,
                     data.profile.cusip,
-                    data.profile.dcf,
-                    data.profile.dcfDiff,
                     data.profile.description,
                     data.profile.exchange,
                     data.profile.exchangeShortName,
