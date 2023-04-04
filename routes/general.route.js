@@ -10,7 +10,7 @@ router.get("/preassure", requireToken, getAverage)
 router.post("/industrias", requireToken, getIndustrias)
 router.post("/subIndustrias", requireToken, getSubIndustrias)
 
-router.post("/profile", requireToken, newProfile);
+router.post("/profile", newProfile);
 
 /* router.post("/ticker", getTicker)
 router.post("/price", getPrice)
