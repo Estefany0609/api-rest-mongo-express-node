@@ -6,7 +6,7 @@ const api_key = process.env.API_FINANCIAL;
 
 export const getHistoricoDiario = async (req, res) => {
     try {
-        const response = await pool.query('SELECT * FROM web_financial.listado_historico_general where date = (select max(date) from web_financial.listado_historico_general ) ORDER BY ticker ');
+        const response = await pool.query('SELECT web_financial.listado_historico_general.id, date, web_financial.listado_historico_general.ticker, total_stock_grade, web_financial.listado_historico_general.sector, web_financial.listado_historico_general.industry, web_financial.listado_historico_general.sub_industry, volume, preassure_daily, signal_cp, alert_cp, _5_days_presion, _10_days_presion, _20_days_presion, signal_mp, alert_mp, _50_days_presion, _100_days_presion, signal_lp, alert_lp, _200_days_presion, eps_date, quarter, surprise_percentage, ytd_var_percentage, var_price_high, close, category, change_percentage, _260_days_presion, bearish_preassure_score, bulish_preassure_score, qa1_var_percentage, qa2_var_percentage, qa3_var_percentage, roc_5, roc_10, roc_20, roc_50, roc_100, roc_200, roc_260, divergencia, var_price_low FROM web_financial.listado_historico_general LEFT OUTER JOIN web_financial.company_profile ON web_financial.company_profile.ticker = web_financial.listado_historico_general.ticker where date = (select max(date) from web_financial.listado_historico_general) and isetf != $1 and exchange != $2 order by ticker', ["true", "Other OTC"] ); 
         if (!response.rows) throw ({ code: 11000 })
         return res.json(response.rows)
     } catch (error) {
@@ -55,11 +55,11 @@ export const getSubIndustrias = async (req, res) => {
 export const getAverage = async (req, res) => {
     try {
         let response = await pool.query(
-            'SELECT count(web_financial.h_p_volume.ticker) count_ticker, sector, industry, sub_industry, cast (AVG (preassure_daily) as decimal (10,2)) calculo_1_day, ' +
+            'SELECT count(web_financial.h_p_volume.ticker) count_ticker, web_financial.tos_sector_matrix.sector, web_financial.tos_sector_matrix.industry, web_financial.tos_sector_matrix.sub_industry, cast (AVG (preassure_daily) as decimal (10,2)) calculo_1_day, ' +
             'cast(AVG(_5_days_presion) as decimal (10, 2)) calculo_5_days, cast(AVG(_10_days_presion) as decimal (10, 2)) calculo_10_days, cast(AVG(_20_days_presion) as decimal (10, 2)) calculo_20_days, ' +
             ' cast (AVG (_50_days_presion) as decimal (10,2)) calculo_50_days, cast (AVG (_100_days_presion) as decimal (10,2)) calculo_100_days, cast (AVG (_200_days_presion) as decimal (10,2)) calculo_200_days, ' +
-            'cast (AVG (_260_days_presion) as decimal (10,2)) calculo_260_days FROM web_financial.h_p_volume LEFT OUTER JOIN web_financial.tos_sector_matrix on web_financial.h_p_volume.ticker = web_financial.tos_sector_matrix.ticker ' +
-            ' where category = $1 and date = (select max(date) from web_financial.listado_historico_general ) group by sector, industry, sub_industry',  ['stock'] );
+            'cast (AVG (_260_days_presion) as decimal (10,2)) calculo_260_days FROM web_financial.h_p_volume LEFT OUTER JOIN web_financial.tos_sector_matrix on web_financial.h_p_volume.ticker = web_financial.tos_sector_matrix.ticker LEFT OUTER JOIN web_financial.company_profile ON web_financial.company_profile.ticker = web_financial.h_p_volume.ticker' +
+            ' where isetf = $1 and exchange != $2 and web_financial.tos_sector_matrix.sector != $3  and date = (select max(date) from web_financial.listado_historico_general ) group by web_financial.tos_sector_matrix.sector, web_financial.tos_sector_matrix.industry, web_financial.tos_sector_matrix.sub_industry',  ['true', 'Other OTC', ''  ] );
         if (!response.rows) throw ({ code: 11000 }) 
         return res.json(response.rows)
     } catch (error) {
