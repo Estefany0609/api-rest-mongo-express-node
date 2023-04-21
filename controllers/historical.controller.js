@@ -44,6 +44,8 @@ export const readSheet = async (req, res) => {
   const sheetName = req.query.sheetName;
   const range = req.query.range;
 
+  console.log(sheetName);
+
   if (!fileId || !sheetName || !range) {
     res
       .status(400)
@@ -95,6 +97,82 @@ export const readSheet = async (req, res) => {
     const jsonData = xlsx.utils.sheet_to_json(worksheet, { range });
 
     res.json(jsonData);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener datos de Google Drive" });
+  }
+};
+
+export const readSheetFilter = async (req, res) => {
+  const fileId = req.query.spreadsheetId;
+  const sheetName = req.query.sheetName;
+  const range = req.query.range;
+  const filterColumn = req.query.filterColumn;
+  const filterValue = req.query.filterValue;
+
+  console.log(filterValue);
+  console.log(filterColumn);
+
+  if (!fileId || !sheetName || !range || !filterColumn || !filterValue) {
+    res.status(400).json({
+      error:
+        "Se requieren los parámetros fileId, sheetName, range, filterColumn y filterValue ",
+    });
+    return;
+  }
+
+  try {
+    const googleAuth = new GoogleAuth({
+      keyFile: "./controllers/google-credentials.json", // Reemplaza con la ruta al archivo de credenciales JSON
+      scopes: ["https://www.googleapis.com/auth/drive.readonly"],
+    });
+
+    const authClient = await googleAuth.getClient();
+
+    const drive = google.drive({ version: "v3", auth: authClient });
+
+    const fileMetadata = await drive.files.get({
+      fileId: fileId,
+      fields: "name, mimeType",
+    });
+
+    if (
+      !fileMetadata.data.mimeType.includes(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      )
+    ) {
+      res.status(400).json({ error: "El archivo no es un archivo de Excel" });
+      return;
+    }
+
+    const excelFile = await drive.files.get(
+      {
+        fileId: fileId,
+        alt: "media",
+      },
+      { responseType: "arraybuffer" }
+    );
+
+    const workbook = xlsx.read(excelFile.data, { type: "buffer" });
+
+    const worksheet = workbook.Sheets[sheetName];
+
+    if (!worksheet) {
+      res.status(404).json({ error: "No se encontró la hoja especificada" });
+      return;
+    }
+
+    const jsonData = xlsx.utils.sheet_to_json(worksheet, { range });
+
+    let filteredData = jsonData;
+
+    if (filterColumn && filterValue !== undefined) {
+      filteredData = jsonData.filter(
+        (row) => row[filterColumn] === filterValue
+      );
+    }
+
+    res.json(filteredData);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Error al obtener datos de Google Drive" });
