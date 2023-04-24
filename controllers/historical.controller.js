@@ -55,7 +55,7 @@ export const readSheet = async (req, res) => {
 
   try {
     const googleAuth = new GoogleAuth({
-      keyFile: "./controllers/google-credentials.json", // Reemplaza con la ruta al archivo de credenciales JSON
+      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
       scopes: ["https://www.googleapis.com/auth/drive.readonly"],
     });
 
