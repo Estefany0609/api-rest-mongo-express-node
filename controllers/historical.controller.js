@@ -165,29 +165,6 @@ const readExcel = async (accessToken, driveId, fileId) => {
   return excelToArray(excelFileBuffer);
 };
 
-const main = async () => {
-  const token = await accessToken;
-  const driveId = "3E4A4FC279F68ADC";
-  const folderId = "3E4A4FC279F68ADC!3582";
-  const excelFileName = "DinamicoTOS.xlsx";
-  const sheetName = "Sheet1";
-
-  const files = await getFilesInFolder(token, driveId, folderId);
-  const excelFile = findExcelFile(files, excelFileName);
-
-  if (excelFile) {
-    const excelData = await readExcelFile(
-      token,
-      driveId,
-      excelFile.id,
-      sheetName
-    );
-    console.log("Excel data:", excelData);
-  } else {
-    console.error("Excel file not found");
-  }
-};
-
 async function getExcelFile(accessToken, driveId, fileId) {
   const graphClient = graph.Client.init({
     authProvider: (done) => {
@@ -217,7 +194,6 @@ function excelToArray(buffer) {
   const jsonArray = XLSX.utils.sheet_to_json(worksheet, { raw: true });
   return jsonArray;
 }
-
 
 /* 
 export const readSheetGoogleDrive = async (req, res) => {
