@@ -4,11 +4,220 @@ import fetch from "node-fetch";
 import fs from "fs";
 import { google } from "googleapis";
 import * as xlsx from "xlsx";
+import XLSX from "xlsx";
 import { GoogleAuth } from "google-auth-library";
+import { ConfidentialClientApplication } from "@azure/msal-node";
+
+import { file } from "googleapis/build/src/apis/file/index.js";
+import { Client } from "@microsoft/microsoft-graph-client";
+import graph from "@microsoft/microsoft-graph-client";
+import axios from "axios";
 
 const endpointBase =
   "https://financialmodelingprep.com/api/v3/company/profile/";
 const api_key = process.env.API_FINANCIAL;
+
+const getAccessToken = async () => {
+  const clientId = process.env.CLIENT_ID;
+  const tenantId = process.env.TENANT_ID;
+  const clientSecret = process.env.CLIENT_SECRET;
+
+  const url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+  const data = `client_id=${clientId}&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default&client_secret=${encodeURIComponent(
+    clientSecret
+  )}&grant_type=client_credentials`;
+  const config = {
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  };
+
+  try {
+    const response = await axios.post(url, data, config);
+    return response.data.access_token;
+  } catch (error) {
+    console.error("Error getting access token:", error);
+    return null;
+  }
+};
+
+const getDrive = async (accessToken, driveId) => {
+  const graphClient = graph.Client.init({
+    authProvider: (done) => {
+      done(null, accessToken);
+    },
+  });
+
+  try {
+    const drive = await graphClient
+      .api(`/drives/${driveId}`)
+      .version("v1.0")
+      .get();
+
+    return drive;
+  } catch (error) {
+    console.error("Error getting drive:", error);
+    return null;
+  }
+};
+
+const getFolder = async (accessToken, driveId, folderId) => {
+  const graphClient = graph.Client.init({
+    authProvider: (done) => {
+      done(null, accessToken);
+    },
+  });
+
+  try {
+    const folder = await graphClient
+      .api(`/drives/${driveId}/items/${folderId}`)
+      .version("v1.0")
+      .get();
+
+    return folder;
+  } catch (error) {
+    console.error("Error getting folder:", error);
+    return null;
+  }
+};
+
+const getFilesInFolder = async (accessToken, driveId, folderId) => {
+  const graphClient = graph.Client.init({
+    authProvider: (done) => {
+      done(null, accessToken);
+    },
+  });
+
+  try {
+    const files = await graphClient
+      .api(`/drives/${driveId}/items/${folderId}/children`)
+      .version("v1.0")
+      .get();
+
+    return files.value;
+  } catch (error) {
+    console.error("Error getting files in folder:", error);
+    return null;
+  }
+};
+
+const findExcelFile = (files, excelFileName) => {
+  return files.find((file) => file.name === excelFileName);
+};
+
+const getDriveId = async (accessToken, userEmail) => {
+  const graphClient = graph.Client.init({
+    authProvider: (done) => {
+      done(null, accessToken);
+    },
+  });
+
+  try {
+    const drive = await graphClient
+      .api(`/users/${encodeURIComponent(userEmail)}/drive`)
+      .version("v1.0")
+      .get();
+
+    return drive.id;
+  } catch (error) {
+    console.error("Error getting drive ID:", error);
+    return null;
+  }
+};
+
+const accessToken = (async function () {
+  try {
+    return await getAccessToken();
+  } catch (error) {
+    console.error("Error getting access token:", error);
+    return null;
+  }
+})();
+
+const readExcelFile = async (accessToken, driveId, fileId, sheetName) => {
+  const graphClient = graph.Client.init({
+    authProvider: (done) => {
+      done(null, accessToken);
+    },
+  });
+
+  try {
+    const data = await graphClient
+      .api(
+        `/drives/${driveId}/items/${fileId}/workbook/worksheets('${sheetName}')/usedRange`
+      )
+      .version("v1.0")
+      .select("values")
+      .get();
+
+    return data.values;
+  } catch (error) {
+    console.error("Error reading Excel file:", error);
+    return null;
+  }
+};
+
+const readExcel = async (accessToken, driveId, fileId) => {
+  // Obtener el archivo de Excel de OneDrive
+  const excelFileBuffer = await getExcelFile(accessToken, driveId, fileId);
+
+  // Convertir el archivo de Excel en un array y devolverlo
+  return excelToArray(excelFileBuffer);
+};
+
+const main = async () => {
+  const token = await accessToken;
+  const driveId = "3E4A4FC279F68ADC";
+  const folderId = "3E4A4FC279F68ADC!3582";
+  const excelFileName = "DinamicoTOS.xlsx";
+  const sheetName = "Sheet1";
+
+  const files = await getFilesInFolder(token, driveId, folderId);
+  const excelFile = findExcelFile(files, excelFileName);
+
+  if (excelFile) {
+    const excelData = await readExcelFile(
+      token,
+      driveId,
+      excelFile.id,
+      sheetName
+    );
+    console.log("Excel data:", excelData);
+  } else {
+    console.error("Excel file not found");
+  }
+};
+
+async function getExcelFile(accessToken, driveId, fileId) {
+  const graphClient = graph.Client.init({
+    authProvider: (done) => {
+      done(null, accessToken);
+    },
+  });
+
+  try {
+    const response = await graphClient
+      .api(`/drives/${driveId}/items/${fileId}/content`)
+      .responseType("arraybuffer")
+      .get();
+    return response;
+  } catch (error) {
+    console.error("Error getting Excel file:", error);
+    return null;
+  }
+}
+
+function excelToArray(buffer) {
+  const workbook = XLSX.read(buffer, { type: "buffer" });
+
+  // Cambia 'Sheet1' por el nombre de la hoja que deseas leer, si es diferente
+  const sheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName];
+
+  const jsonArray = XLSX.utils.sheet_to_json(worksheet, { raw: true });
+  return jsonArray;
+}
+
 
 /* 
 export const readSheetGoogleDrive = async (req, res) => {
