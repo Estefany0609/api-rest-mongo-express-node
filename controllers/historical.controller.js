@@ -229,8 +229,6 @@ export const readSheet = async (req, res) => {
   const sheetName = req.query.sheetName;
   const range = req.query.range;
 
-  console.log(sheetName);
-
   if (!fileId || !sheetName || !range) {
     res
       .status(400)
@@ -294,9 +292,6 @@ export const readSheetFilter = async (req, res) => {
   const range = req.query.range;
   const filterColumn = req.query.filterColumn;
   const filterValue = req.query.filterValue;
-
-  console.log(filterValue);
-  console.log(filterColumn);
 
   if (!fileId || !sheetName || !range || !filterColumn || !filterValue) {
     res.status(400).json({
@@ -431,7 +426,7 @@ export const getAverage = async (req, res) => {
         "cast(AVG(_5_days_presion) as decimal (10, 2)) calculo_5_days, cast(AVG(_10_days_presion) as decimal (10, 2)) calculo_10_days, cast(AVG(_20_days_presion) as decimal (10, 2)) calculo_20_days, " +
         " cast (AVG (_50_days_presion) as decimal (10,2)) calculo_50_days, cast (AVG (_100_days_presion) as decimal (10,2)) calculo_100_days, cast (AVG (_200_days_presion) as decimal (10,2)) calculo_200_days, " +
         "cast (AVG (_260_days_presion) as decimal (10,2)) calculo_260_days FROM web_financial.h_p_volume LEFT OUTER JOIN web_financial.tos_sector_matrix on web_financial.h_p_volume.ticker = web_financial.tos_sector_matrix.ticker LEFT OUTER JOIN web_financial.company_profile ON web_financial.company_profile.ticker = web_financial.h_p_volume.ticker" +
-        " where isetf = $1 and exchange != $2 and web_financial.tos_sector_matrix.sector != $3  and date = (select max(date) from web_financial.listado_historico_general ) group by web_financial.tos_sector_matrix.sector, web_financial.tos_sector_matrix.industry, web_financial.tos_sector_matrix.sub_industry",
+        " where isetf != $1 and exchange != $2 and web_financial.tos_sector_matrix.sector != $3  and date = (select max(date) from web_financial.listado_historico_general ) group by web_financial.tos_sector_matrix.sector, web_financial.tos_sector_matrix.industry, web_financial.tos_sector_matrix.sub_industry",
       ["true", "Other OTC", ""]
     );
     if (!response.rows) throw { code: 11000 };
