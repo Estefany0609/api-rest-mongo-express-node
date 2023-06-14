@@ -13,10 +13,10 @@ import {
 import { requireToken } from "../middlewares/requireToken.js";
 const router = Router();
 
-router.get("/", requireToken, getHistoricoDiario);
+router.get("/", getHistoricoDiario);
 router.get("/tickerSM", getTickerSM);
 router.get("/sector", requireToken, getSectores);
-router.get("/preassure", requireToken, getAverage);
+router.get("/preassure", getAverage);
 router.post("/industrias", requireToken, getIndustrias);
 router.post("/subIndustrias", requireToken, getSubIndustrias);
 
@@ -24,6 +24,7 @@ router.post("/profile", newProfile);
 
 router.get("/fileGoogle", readSheet);
 router.get("/fileGoogleFilter", requireToken, readSheetFilter);
+router.get("/fileGoogleFilterH", readSheetFilter);
 /* router.post("/ticker", getTicker)
 router.post("/price", getPrice)
 
