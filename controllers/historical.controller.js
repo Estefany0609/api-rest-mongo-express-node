@@ -463,8 +463,10 @@ export const newProfile = async (req, res) => {
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
 
     for (let i = 0; i < symbols.length; i++) {
-      const ticker = symbols[i].ticker;
+      /* const ticker = symbols[i].ticker; */
+      const ticker = symbols[i];
       const endpoint = `${endpointBase}${ticker}?apikey=${api_key}`;
+
       try {
         // Realizar la solicitud HTTP a la API
         const response = await fetch(endpoint);
@@ -543,7 +545,7 @@ export const newProfile = async (req, res) => {
 
     return res.json({
       success: true,
-      message: "Perfiles guardados exitosamente",
+      message: `Perfiles exitosos: ${success}, Perfiles fallidos: ${failure}`,
     });
   } catch (error) {
     console.error(error);
