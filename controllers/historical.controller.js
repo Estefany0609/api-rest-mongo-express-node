@@ -362,7 +362,7 @@ export const readSheetFilter = async (req, res) => {
 export const getHistoricoDiario = async (req, res) => {
   try {
     const response = await pool.query(
-      "SELECT web_financial.listado_historico_general.id, date, web_financial.listado_historico_general.ticker, total_stock_grade, web_financial.listado_historico_general.sector, web_financial.listado_historico_general.industry, web_financial.listado_historico_general.sub_industry, volume, preassure_daily, signal_cp, alert_cp, _5_days_presion, _10_days_presion, _20_days_presion, signal_mp, alert_mp, _50_days_presion, _100_days_presion, signal_lp, alert_lp, _200_days_presion, eps_date, quarter, surprise_percentage, ytd_var_percentage, var_price_high, close, category, change_percentage, _260_days_presion, bearish_preassure_score, bulish_preassure_score, qa1_var_percentage, qa2_var_percentage, qa3_var_percentage, roc_5, roc_10, roc_20, roc_50, roc_100, roc_200, roc_260, divergencia, var_price_low, correlation, relative_strength_mercado FROM web_financial.listado_historico_general LEFT OUTER JOIN web_financial.company_profile ON web_financial.company_profile.ticker = web_financial.listado_historico_general.ticker where date = (select max(date) from web_financial.listado_historico_general) and isetf != $1 and exchange != $2 order by ticker",
+      "SELECT web_financial.listado_historico_general.id, web_financial.listado_historico_general.date, web_financial.listado_historico_general.ticker, total_stock_grade, web_financial.listado_historico_general.sector, web_financial.listado_historico_general.industry, web_financial.listado_historico_general.sub_industry, web_financial.listado_historico_general.volume, preassure_daily, signal_cp, alert_cp, _5_days_presion, _10_days_presion, _20_days_presion, signal_mp, alert_mp, _50_days_presion, _100_days_presion, signal_lp, alert_lp, _200_days_presion, eps_date, quarter, surprise_percentage, ytd_var_percentage, var_price_high, web_financial.listado_historico_general.close, category, change_percentage, _260_days_presion, bearish_preassure_score, bulish_preassure_score, qa1_var_percentage, qa2_var_percentage, qa3_var_percentage, roc_5, roc_10, roc_20, roc_50, roc_100, roc_200, roc_260, divergencia, var_price_low, correlation, relative_strength_mercado, rsi_daily_tkr_sp500, rsi_daily_tkr_sector FROM web_financial.listado_historico_general LEFT OUTER JOIN web_financial.h_p_fuerza_relativa ON web_financial.h_p_fuerza_relativa.ticker = web_financial.listado_historico_general.ticker AND web_financial.h_p_fuerza_relativa.date = web_financial.listado_historico_general.date LEFT OUTER JOIN web_financial.company_profile ON web_financial.company_profile.ticker = web_financial.listado_historico_general.ticker where web_financial.listado_historico_general.date = (select max(date) from web_financial.listado_historico_general) and isetf != $1 and exchange != $2 order by ticker",
       ["true", "Other OTC"]
     );
     if (!response.rows) throw { code: 11000 };
@@ -439,8 +439,11 @@ export const getAverage = async (req, res) => {
 
 export const getTickerSM = async (req, res) => {
   try {
-    const response = await pool.query(
+    /*  const response = await pool.query(
       "select distinct(ticker) from web_financial.tos_sector_matrix"
+    ); */
+    const response = await pool.query(
+      "SELECT DISTINCT tsm.ticker FROM web_financial.tos_historical_prices AS tsm WHERE tsm.date > '2023-06-01' AND NOT EXISTS (   SELECT 1 FROM web_financial.company_profile AS thp  WHERE tsm.ticker = thp.ticker );"
     );
     if (!response.rows) throw { code: 11000 };
     return res.json(response.rows);
@@ -463,8 +466,8 @@ export const newProfile = async (req, res) => {
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
 
     for (let i = 0; i < symbols.length; i++) {
-      /* const ticker = symbols[i].ticker; */
-      const ticker = symbols[i];
+      const ticker = symbols[i].ticker;
+      /* const ticker = symbols[i]; */
       const endpoint = `${endpointBase}${ticker}?apikey=${api_key}`;
 
       try {
@@ -553,6 +556,20 @@ export const newProfile = async (req, res) => {
       success: false,
       message: "Ha ocurrido un error al guardar los perfiles",
     });
+  }
+};
+
+export const getCompanyProfile = async (req, res) => {
+  console.log("llamando");
+  try {
+    const response = await pool.query(
+      "SELECT ticker, companyname, description, exchangeshortname, image, website	FROM web_financial.company_profile;"
+    );
+    if (!response.rows) throw { code: 11000 };
+    return res.json(response.rows);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "error de servidor" });
   }
 };
 
