@@ -133,15 +133,16 @@ const getVolumeData = async (ticker, limit) => {
   }
 };
 
-const getEarningsData = async (ticker, limit) => {
+const getEarningsData = async (req, res) => {
+  const { ticker } = req.body;
   try {
     let query =
-      "SELECT date, eps_act, eps_est, quarter, surprise_abs, surprise_percentage, ytd_var_percentage,  qa1_var_percentage, qa2_var_percentage, qa3_var_percentage FROM web_financial.tos_eps WHERE ticker = $1 ORDER BY date DESC LIMIT $2";
-    const values = [ticker, limit];
+      "SELECT date, quarter, ytd_var_percentage, qa1_var_percentage, qa2_var_percentage, qa3_var_percentage, correlation FROM web_financial.tos_eps WHERE ticker = $1 AND date is not null order by date desc limit $2";
+    const values = [ticker, 8];
 
     let response = await pool.query(query, values);
     if (!response.rows) throw { code: 11000 };
-    return response.rows;
+    return res.json(response.rows);
   } catch (error) {
     console.log(error);
     return res.status(500).json({ error: "Error de servidor" });
@@ -184,7 +185,8 @@ const getAlgoritmoData = async (req, res) => {
   const { ticker } = req.body;
   try {
     let query =
-      "SELECT h.date, h.ticker, h.volume, preassure_daily, signal_cp, alert_cp, _5_days_presion, _10_days_presion, _20_days_presion, signal_mp, alert_mp, _50_days_presion, _100_days_presion, signal_lp, alert_lp, _200_days_presion, close, change_percentage, _260_days_presion, fases.fase_principal_cp, fases.fase_subyacente_cp, cast (preassure_daily*0.3+_5_days_presion*0.25+_10_days_presion*0.2+_20_days_presion*0.15+_50_days_presion*0.05+_100_days_presion*0.03+_200_days_presion*0.015+_260_days_presion*0.005 as decimal (10,2)) presion_volumen_corto, cast (preassure_daily*0.05+_5_days_presion*0.1+_10_days_presion*0.15+_20_days_presion*0.25+_50_days_presion*0.25+_100_days_presion*0.1+_200_days_presion*0.07+_260_days_presion*0.03 as decimal (10,2)) presion_volumen_mediano, cast (preassure_daily*0.01+_5_days_presion*0.02+_10_days_presion*0.03+_20_days_presion*0.04+_50_days_presion*0.1+_100_days_presion*0.2+_200_days_presion*0.3+_260_days_presion*0.3 as decimal (10,2)) presion_volumen_largo  FROM web_financial.listado_historico_general as h LEFT OUTER JOIN web_financial.fases_mercado fases ON fases.ticker = h.ticker AND fases.date = h.date WHERE h.ticker = $1 order by date desc limit $2; ";
+      "SELECT h.date, h.ticker, h.volume, signal_cp, alert_cp, signal_mp, alert_mp, signal_lp, alert_lp, h.close, change_percentage, fases.fase_principal_cp, fases.fase_subyacente_cp, cast (preassure_daily*0.3+_5_days_presion*0.25+_10_days_presion*0.2+_20_days_presion*0.15+_50_days_presion*0.05+_100_days_presion*0.03+_200_days_presion*0.015+_260_days_presion*0.005 as decimal (10,2)) presion_volumen_corto, cast (preassure_daily*0.05+_5_days_presion*0.1+_10_days_presion*0.15+_20_days_presion*0.25+_50_days_presion*0.25+_100_days_presion*0.1+_200_days_presion*0.07+_260_days_presion*0.03 as decimal (10,2)) presion_volumen_mediano, cast (preassure_daily*0.01+_5_days_presion*0.02+_10_days_presion*0.03+_20_days_presion*0.04+_50_days_presion*0.1+_100_days_presion*0.2+_200_days_presion*0.3+_260_days_presion*0.3 as decimal (10,2)) presion_volumen_largo, oscilator_rsi_14 rsi_index FROM web_financial.listado_historico_general as h LEFT OUTER JOIN web_financial.fases_mercado fases ON fases.ticker =h.ticker AND fases.date= h.date LEFT OUTER JOIN web_financial.h_p_rsi rsi ON rsi.ticker =h.ticker AND rsi.date= h.date WHERE h.ticker = $1 order by date desc limit $2; ";
+
     const values = [ticker, 15];
 
     let response = await pool.query(query, values);
