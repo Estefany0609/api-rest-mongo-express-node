@@ -560,7 +560,6 @@ export const newProfile = async (req, res) => {
 };
 
 export const getCompanyProfile = async (req, res) => {
-  console.log("llamando");
   try {
     const response = await pool.query(
       "SELECT ticker, companyname, description, exchangeshortname, image, website	FROM web_financial.company_profile;"

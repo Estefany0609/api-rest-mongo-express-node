@@ -148,6 +148,22 @@ const getEarningsData = async (ticker, limit) => {
   }
 };
 
+const getFases = async (req, res) => {
+  const { ticker } = req.body;
+  try {
+    let query =
+      "SELECT date, fase_principal_cp, fase_subyacente_cp FROM web_financial.fases_mercado WHERE ticker = $1 order by date desc limit $2 ";
+    const values = [ticker, 15];
+
+    let response = await pool.query(query, values);
+    if (!response.rows) throw { code: 11000 };
+    return res.json(response.rows);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "Error de servidor" });
+  }
+};
+
 const allDataAlgoritmo = async (ticker) => {
   try {
     let query =
@@ -265,4 +281,5 @@ export {
   getSMAData,
   getVolumeData,
   getEarningsData,
+  getFases,
 };

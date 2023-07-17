@@ -10,6 +10,7 @@ import {
   getROCData,
   getVolumeData,
   getEarningsData,
+  getFases,
 } from "../controllers/data.controller.js";
 
 const router = Router();
@@ -24,5 +25,6 @@ router.post("/macdLp", getMACDlargoData);
 router.post("/roc", getROCData);
 router.post("/volume", getVolumeData);
 router.post("/earnings", getEarningsData);
+router.post("/fases", getFases);
 
 export default router;
