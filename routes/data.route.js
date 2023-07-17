@@ -11,6 +11,7 @@ import {
   getVolumeData,
   getEarningsData,
   getFases,
+  getAlgoritmoData,
 } from "../controllers/data.controller.js";
 
 const router = Router();
@@ -26,5 +27,6 @@ router.post("/roc", getROCData);
 router.post("/volume", getVolumeData);
 router.post("/earnings", getEarningsData);
 router.post("/fases", getFases);
+router.post("/algoritmo", getAlgoritmoData);
 
 export default router;
