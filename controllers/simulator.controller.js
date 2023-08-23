@@ -208,19 +208,22 @@ export const createPortafolio = async (req, res) => {
     // Convertir la lista de tickers en una cadena separada por comas
     const tickersString = tickers.join(", ");
 
-    const query =
-      "INSERT INTO web_financial.listas_simuladores (tickers, nombre_lista) VALUES ($1, $2)";
-    const values = [tickersString, nombreLista];
+    const insertQuery =
+      "INSERT INTO web_financial.listas_simuladores (tickers, nombre_lista) VALUES ($1, $2) RETURNING *";
+    const insertValues = [tickersString, nombreLista];
 
-    await pool.query(query, values);
+    // Insertar el portafolio en la base de datos y obtener el registro recién insertado
+    const {
+      rows: [createdPortafolio],
+    } = await pool.query(insertQuery, insertValues);
 
-    return res
-      .status(201)
-      .json({ tickers: tickersString, nombre_lista: nombreLista });
+    return res.json({
+      message: "Portafolio creado exitosamente",
+      portafolio: createdPortafolio,
+    });
   } catch (error) {
     console.error("Error al guardar los datos:", error);
-  } finally {
-    pool.end();
+    return res.status(500).json({ error: "Error al guardar los datos" });
   }
 };
 
@@ -249,5 +252,47 @@ export const deletePortafolio = async (req, res) => {
   } catch (error) {
     console.error("Error al eliminar los datos:", error);
     return res.status(500).json({ error: "Error al eliminar los datos" });
+  }
+};
+
+export const updateAcciones = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const tickers = req.body.tickers; // Array de tickers actualizado
+
+    await pool.query(
+      "UPDATE web_financial.listas_simuladores SET tickers = $1 WHERE id = $2",
+      [tickers, id]
+    );
+
+    return res.json({
+      message: "Acciones actualizadAs exitosamente",
+    });
+  } catch (error) {
+    console.error("Error al actualizar las acciones y nombre de lista:", error);
+    return res
+      .status(500)
+      .json({ error: "Error al actualizar las acciones y nombre de lista" });
+  }
+};
+
+export const updateNombreLista = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const nombreLista = req.body.nombreLista; // Nuevo nombre de la lista
+
+    await pool.query(
+      "UPDATE web_financial.listas_simuladores SET nombre_lista = $1 WHERE id = $2",
+      [nombreLista, id]
+    );
+
+    return res.json({
+      message: "Nombre de lista actualizado exitosamente",
+    });
+  } catch (error) {
+    console.error("Error al actualizar el nombre de lista:", error);
+    return res
+      .status(500)
+      .json({ error: "Error al actualizar el nombre de lista" });
   }
 };
