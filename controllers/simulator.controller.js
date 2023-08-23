@@ -230,7 +230,7 @@ export const createPortafolio = async (req, res) => {
 export const getPortafolios = async (req, res) => {
   try {
     const response = await pool.query(
-      "select * FROM web_financial.listas_simuladores"
+      "select * FROM web_financial.listas_simuladores ORDER BY nombre_lista"
     );
     if (!response.rows) throw { code: 11000 };
     return res.json(response.rows);
