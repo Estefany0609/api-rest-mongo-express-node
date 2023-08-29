@@ -12,7 +12,7 @@ const app = express();
 
 const whiteList = [
   /^https?:\/\/localhost(:\d+)?$/, // Coincide con cualquier puerto en localhost
-  "api-rest-mongo-express-node-production.up.railway.app",
+  process.env.ORIGIN2, // Usando la variable de entorno
 ];
 
 const checkWhiteList = (origin) => {
