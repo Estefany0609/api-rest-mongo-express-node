@@ -318,8 +318,6 @@ export const getAlertasPortafolios = async (req, res) => {
       ? dateFromParams
       : new Date().toISOString().split("T")[0];
 
-    console.log(today);
-    /*
     let mensajes = [];
 
     // 2. Iterar sobre cada lista y buscar alertas
@@ -389,12 +387,11 @@ En el portafilio <span style="color: blue; font-weight: bold; text-decoration: u
     let mensajeCompleto = mensajes.join("");
 
     // Luego, en tu template, reemplaza un marcador de posición con ese mensajeCompleto:
-    // Luego, en tu template, reemplaza un marcador de posición con ese mensajeCompleto:
     const customizedTemplate = template.replace(
       "{{MENSAJE_COMPLETO}}",
       mensajeCompleto
     );
-    
+
     try {
       const mailOptions = {
         from: process.env.EMAIL_USER,
@@ -417,7 +414,7 @@ En el portafilio <span style="color: blue; font-weight: bold; text-decoration: u
       console.log(error);
       return res.status(500).json({ error: "Error al enviar el correo." });
     }
-*/
+
     /* return res.json(mensajes); */
   } catch (error) {
     console.log(error);
