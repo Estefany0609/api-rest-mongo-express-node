@@ -49,10 +49,10 @@ export default router;
 
 // Aquí configuras tu tarea programada.
 const task = cron.schedule(
-  "0 18 * * *",
+  "0 19 * * *",
   function () {
     // Verifica si es 7:00 PM en la zona horaria de Nueva York (Eastern Time)
-    const is6PMNY = moment().tz("America/New_York").format("HH") === "18";
+    const is6PMNY = moment().tz("America/New_York").format("HH") === "19";
 
     if (is6PMNY) {
       console.log(
