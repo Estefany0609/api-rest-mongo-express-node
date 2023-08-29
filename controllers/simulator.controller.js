@@ -1,4 +1,9 @@
 import { pool } from "../database/connectdb.js";
+import transporter from "../utils/mailer.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 
 export const getSimulator = async (req, res) => {
   try {
@@ -294,5 +299,131 @@ export const updateNombreLista = async (req, res) => {
     return res
       .status(500)
       .json({ error: "Error al actualizar el nombre de lista" });
+  }
+};
+
+export const getAlertasPortafolios = async (req, res) => {
+  try {
+    // 1. Obtener todas las listas de tickers de la tabla listas_simuladores
+    const listasResponse = await pool.query(
+      "SELECT id, tickers, nombre_lista FROM web_financial.listas_simuladores"
+    );
+
+    if (!listasResponse.rows || listasResponse.rows.length === 0)
+      throw { code: 11000 };
+
+    // Aquí verificamos si el parámetro date está presente, de lo contrario, utilizamos la fecha actual.
+    const dateFromParams = req.params.date;
+    const today = dateFromParams
+      ? dateFromParams
+      : new Date().toISOString().split("T")[0];
+
+    console.log(today);
+    /*
+    let mensajes = [];
+
+    // 2. Iterar sobre cada lista y buscar alertas
+    for (let lista of listasResponse.rows) {
+      const tickersArray = lista.tickers
+        .split(", ")
+        .map((ticker) => `'${ticker.trim()}'`);
+      const tickersForQuery = tickersArray.join(",");
+
+      // Consulta de alertas para la lista actual
+      const alertsQuery = `
+                SELECT ticker, signal_alert 
+                FROM web_financial.h_p_macd_mp 
+                WHERE date = $1 
+                AND (signal_alert = 'Señal de Compra' OR signal_alert = 'Señal de Venta')
+                AND ticker IN (${tickersForQuery})
+            `;
+      const alertsResponse = await pool.query(alertsQuery, [today]);
+
+      // Preparar el mensaje para esta lista
+      let compras = [];
+      let ventas = [];
+
+      for (let alerta of alertsResponse.rows) {
+        if (alerta.signal_alert === "Señal de Compra") {
+          compras.push(alerta.ticker);
+        } else {
+          ventas.push(alerta.ticker);
+        }
+      }
+
+      if (compras.length > 0 || ventas.length > 0) {
+        // Solo añadir el mensaje si hay al menos una señal de compra o venta
+
+        let mensaje = `<div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
+En el portafilio <span style="color: blue; font-weight: bold; text-decoration: underline;">${lista.nombre_lista}</span>, estas son las acciones que dieron `;
+
+        if (compras.length > 0) {
+          mensaje += `<div class="alert buy"><span style="color: green; font-weight: bold; text-decoration: underline;">Señal de Compra:</span> ${compras.join(
+            ", "
+          )}</div>`;
+        }
+        if (ventas.length > 0) {
+          mensaje += `<div class="alert sell"><span style="color: red; font-weight: bold; text-decoration: underline;">Señal de Venta:</span> ${ventas.join(
+            ", "
+          )}</div>`;
+        }
+
+        mensaje += "</div>"; // Cierra el div
+        mensajes.push(mensaje);
+      }
+    }
+
+    // 3. Enviar el correo (Aquí deberías implementar la lógica para enviar un email. Por ahora, solo devolvemos las alertas)
+    // Obtener correos desde .env y convertirlos a una cadena para nodemailer
+    const recipientEmails = process.env.EMAILS.split(",").join(", ");
+
+    // Establece __filename y __dirname para módulos ES6
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+
+    // Tu código existente
+    const templatePath = path.join(__dirname, "../utils/emailTemplate.html");
+    const template = fs.readFileSync(templatePath, "utf-8");
+
+    // Junta todos los mensajes en un solo string
+    let mensajeCompleto = mensajes.join("");
+
+    // Luego, en tu template, reemplaza un marcador de posición con ese mensajeCompleto:
+    // Luego, en tu template, reemplaza un marcador de posición con ese mensajeCompleto:
+    const customizedTemplate = template.replace(
+      "{{MENSAJE_COMPLETO}}",
+      mensajeCompleto
+    );
+    
+    try {
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: recipientEmails,
+        subject: "Alertas de compra y venta Portafolios - LDMS",
+        html: customizedTemplate,
+      };
+
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.log(error);
+          return res
+            .status(500)
+            .json({ error: "No se pudo enviar el correo." });
+        } else {
+          return res.json({ success: "Correo enviado correctamente.", info });
+        }
+      });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ error: "Error al enviar el correo." });
+    }
+*/
+    /* return res.json(mensajes); */
+  } catch (error) {
+    console.log(error);
+    if (error.code === 11001) {
+      return res.status(404).json({ error: error.message });
+    }
+    return res.status(500).json({ error: "error de servidor" });
   }
 };

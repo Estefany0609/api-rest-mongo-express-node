@@ -12,6 +12,7 @@ import {
   deletePortafolio,
   updateAcciones,
   updateNombreLista,
+  getAlertasPortafolios,
 } from "../controllers/simulator.controller.js";
 import { requireToken } from "../middlewares/requireToken.js";
 //import { bodyLinkValidator, paramLinkValidator } from "../middlewares/validatorManager.js";
@@ -37,6 +38,7 @@ router.patch("/:id", requireToken, updatePosition);
 
 router.post("/listas", createPortafolio);
 router.get("/listas", getPortafolios);
+router.get("/listas/:date?", getAlertasPortafolios);
 router.delete("/listas", deletePortafolio);
 router.put("/listas/:id/acciones", updateAcciones);
 router.put("/listas/:id/nombre", updateNombreLista);
