@@ -40,7 +40,7 @@ router.patch("/:id", requireToken, updatePosition);
 
 router.post("/listas", createPortafolio);
 router.get("/listas", getPortafolios);
-router.get("/listas/:date?", getAlertasPortafolios);
+router.get("/listas/alertas/:date?", getAlertasPortafolios);
 router.delete("/listas", deletePortafolio);
 router.put("/listas/:id/acciones", updateAcciones);
 router.put("/listas/:id/nombre", updateNombreLista);
@@ -49,10 +49,10 @@ export default router;
 
 // Aquí configuras tu tarea programada.
 const task = cron.schedule(
-  "0 19 * * *",
+  "0 13 * * 1-5",
   function () {
     // Verifica si es 7:00 PM en la zona horaria de Nueva York (Eastern Time)
-    const is6PMNY = moment().tz("America/New_York").format("HH") === "19";
+    const is6PMNY = moment().tz("America/New_York").format("HH") === "13";
 
     if (is6PMNY) {
       console.log(

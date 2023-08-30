@@ -5,8 +5,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 
-
-
 export const getSimulator = async (req, res) => {
   try {
     const response = await pool.query(
@@ -334,7 +332,7 @@ export const getAlertasPortafolios = async (req, res) => {
                 SELECT ticker, signal_alert 
                 FROM web_financial.h_p_macd_mp 
                 WHERE date = $1 
-                AND (signal_alert = 'Señal de Compra' OR signal_alert = 'Señal de Venta')
+                AND (signal_alert = 'Señal de Compra' OR signal_alert = 'Señal de Venta' OR signal_alert = 'Alerta Yellow')
                 AND ticker IN (${tickersForQuery})
             `;
       const alertsResponse = await pool.query(alertsQuery, [today]);
@@ -342,12 +340,15 @@ export const getAlertasPortafolios = async (req, res) => {
       // Preparar el mensaje para esta lista
       let compras = [];
       let ventas = [];
+      let yellow = [];
 
       for (let alerta of alertsResponse.rows) {
         if (alerta.signal_alert === "Señal de Compra") {
           compras.push(alerta.ticker);
-        } else {
+        } else if (alerta.signal_alert === "Señal de Venta") {
           ventas.push(alerta.ticker);
+        } else {
+          yellow.push(alerta.ticker);
         }
       }
 
@@ -364,6 +365,11 @@ En el portafilio <span style="color: blue; font-weight: bold; text-decoration: u
         }
         if (ventas.length > 0) {
           mensaje += `<div class="alert sell"><span style="color: red; font-weight: bold; text-decoration: underline;">Señal de Venta:</span> ${ventas.join(
+            ", "
+          )}</div>`;
+        }
+        if (yellow.length > 0) {
+          mensaje += `<div class="alert yellow"><span style="font-weight: bold; text-decoration: underline;">Alerta Yellow:</span> ${yellow.join(
             ", "
           )}</div>`;
         }
