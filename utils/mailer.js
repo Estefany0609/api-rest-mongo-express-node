@@ -35,7 +35,7 @@ async function generateAccessToken() {
 }
 
 // Descomenta la siguiente línea si necesitas generar un token
-generateAccessToken();
+//generateAccessToken();
 //
 
 const transporter = nodemailer.createTransport({
