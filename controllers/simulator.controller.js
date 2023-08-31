@@ -302,11 +302,23 @@ export const updateNombreLista = async (req, res) => {
   }
 };
 
+async function sendMailAsync(mailOptions) {
+  return new Promise((resolve, reject) => {
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(info);
+      }
+    });
+  });
+}
+
 export const getAlertasPortafolios = async (req, res) => {
   try {
     // 1. Obtener todas las listas de tickers de la tabla listas_simuladores
     const listasResponse = await pool.query(
-      "SELECT id, tickers, nombre_lista FROM web_financial.listas_simuladores"
+      "SELECT id, tickers, nombre_lista, email FROM web_financial.listas_simuladores"
     );
 
     if (!listasResponse.rows || listasResponse.rows.length === 0)
@@ -319,6 +331,58 @@ export const getAlertasPortafolios = async (req, res) => {
       : new Date().toISOString().split("T")[0];
 
     let mensajes = [];
+    let mensajesPorEmail = {};
+    let mensajesGenerales = [];
+
+    const generalAlertsQuery = `
+    SELECT macd.ticker, signal_alert
+    FROM web_financial.h_p_macd_mp macd
+    LEFT OUTER JOIN web_financial.fundamental_criteria ON web_financial.fundamental_criteria.ticker = macd.ticker
+    LEFT OUTER JOIN (SELECT DISTINCT ON (ticker) * FROM web_financial.tos_eps where date is not null
+    ORDER BY ticker, date DESC) eps ON eps.ticker = macd.ticker
+    WHERE macd.date = $1 AND (total_stock_grade = 'EXCELLENT' OR total_stock_grade = 'GOOD' ) AND correlation > 0.6
+    AND (signal_alert = 'Señal de Compra' OR signal_alert = 'Señal de Venta' OR signal_alert = 'Alerta Yellow')
+`;
+
+    const generalAlertsResponse = await pool.query(generalAlertsQuery, [today]);
+
+    let generalCompras = [];
+    let generalVentas = [];
+    let generalYellow = [];
+
+    for (let alerta of generalAlertsResponse.rows) {
+      if (alerta.signal_alert === "Señal de Compra") {
+        generalCompras.push(alerta.ticker);
+      } else if (alerta.signal_alert === "Señal de Venta") {
+        generalVentas.push(alerta.ticker);
+      } else {
+        generalYellow.push(alerta.ticker);
+      }
+    }
+
+    if (generalCompras.length > 0 || generalVentas.length > 0) {
+      let generalMensaje = `<div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
+    Estas son las acciones recomendadas generales que dieron `;
+
+      if (generalCompras.length > 0) {
+        generalMensaje += `<div class="alert buy"><span style="color: green; font-weight: bold; text-decoration: underline;">Señal de Compra:</span> ${generalCompras.join(
+          ", "
+        )}</div>`;
+      }
+      if (generalVentas.length > 0) {
+        generalMensaje += `<div class="alert sell"><span style="color: red; font-weight: bold; text-decoration: underline;">Señal de Venta:</span> ${generalVentas.join(
+          ", "
+        )}</div>`;
+      }
+      if (generalYellow.length > 0) {
+        generalMensaje += `<div class="alert yellow"><span style="font-weight: bold; text-decoration: underline;">Alerta Yellow:</span> ${generalYellow.join(
+          ", "
+        )}</div>`;
+      }
+
+      generalMensaje += "</div>"; // Cierra el div
+      mensajesGenerales.push(generalMensaje);
+    }
 
     // 2. Iterar sobre cada lista y buscar alertas
     for (let lista of listasResponse.rows) {
@@ -375,7 +439,16 @@ En el portafilio <span style="color: blue; font-weight: bold; text-decoration: u
         }
 
         mensaje += "</div>"; // Cierra el div
-        mensajes.push(mensaje);
+        if (lista.email) {
+          // Si la lista tiene un email, agregamos el mensaje a ese email
+          if (!mensajesPorEmail[lista.email]) {
+            mensajesPorEmail[lista.email] = [];
+          }
+          mensajesPorEmail[lista.email].push(mensaje);
+        } else {
+          // Si la lista no tiene email, agregamos a mensajes generales
+          mensajesGenerales.push(mensaje);
+        }
       }
     }
 
@@ -394,36 +467,40 @@ En el portafilio <span style="color: blue; font-weight: bold; text-decoration: u
     // Junta todos los mensajes en un solo string
     let mensajeCompleto = mensajes.join("");
 
-    // Luego, en tu template, reemplaza un marcador de posición con ese mensajeCompleto:
-    const customizedTemplate = template.replace(
-      "{{MENSAJE_COMPLETO}}",
-      mensajeCompleto
-    );
+    for (const email in mensajesPorEmail) {
+      // Combina mensajes específicos y generales
+      let mensajes = [...mensajesPorEmail[email], ...mensajesGenerales];
+      let mensajeCompleto = mensajes.join("");
 
-    try {
-      const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: recipientEmails,
-        subject: "Alertas de compra y venta Portafolios - LDMS",
-        html: customizedTemplate,
-      };
+      const customizedTemplate = template.replace(
+        "{{MENSAJE_COMPLETO}}",
+        mensajeCompleto
+      );
 
-      transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-          console.log(error);
-          return res
-            .status(500)
-            .json({ error: "No se pudo enviar el correo." });
-        } else {
-          return res.json({ success: "Correo enviado correctamente.", info });
-        }
-      });
-    } catch (error) {
-      console.log(error);
-      return res.status(500).json({ error: "Error al enviar el correo." });
+      // Envia el correo
+      try {
+        const mailOptions = {
+          from: process.env.EMAIL_USER,
+          to: email,
+          subject: "Alertas de compra y venta Portafolios - LDMS",
+          html: customizedTemplate,
+          attachments: [
+            {
+              filename: "logonew.png",
+              path: "../public/images/logonew.png",
+              cid: "logoimage",
+            },
+          ],
+        };
+
+        await sendMailAsync(mailOptions);
+        //console.log(`Correo enviado a ${email} correctamente.`);
+      } catch (error) {
+        console.log(error);
+      }
     }
 
-    /* return res.json(mensajes); */
+    res.status(200).json({ message: "Mensajes enviados correctamente." });
   } catch (error) {
     console.log(error);
     if (error.code === 11001) {
