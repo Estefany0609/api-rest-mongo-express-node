@@ -484,13 +484,13 @@ En el portafilio <span style="color: blue; font-weight: bold; text-decoration: u
           to: email,
           subject: "Alertas de compra y venta Portafolios - LDMS",
           html: customizedTemplate,
-          attachments: [
+          /*  attachments: [
             {
               filename: "logonew.png",
               path: "../public/images/logonew.png",
               cid: "logoimage",
             },
-          ],
+          ], */
         };
 
         await sendMailAsync(mailOptions);
