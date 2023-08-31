@@ -209,13 +209,13 @@ export const createPortafolio = async (req, res) => {
   try {
     const tickers = req.body.tickers;
     const nombreLista = req.body.nombreLista;
-
+    const email = req.body.email;
     // Convertir la lista de tickers en una cadena separada por comas
     const tickersString = tickers.join(", ");
 
     const insertQuery =
-      "INSERT INTO web_financial.listas_simuladores (tickers, nombre_lista) VALUES ($1, $2) RETURNING *";
-    const insertValues = [tickersString, nombreLista];
+      "INSERT INTO web_financial.listas_simuladores (tickers, nombre_lista, email) VALUES ($1, $2 , $3) RETURNING *";
+    const insertValues = [tickersString, nombreLista, email];
 
     // Insertar el portafolio en la base de datos y obtener el registro recién insertado
     const {
