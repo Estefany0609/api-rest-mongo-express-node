@@ -398,7 +398,7 @@ export const getAlertasPortafolios = async (req, res) => {
       } else {
         generalYellow.push(alerta.ticker);
       }
-    } */
+    }   */ 
 
     // Procesar las respuestas de compra
     for (let alerta of generalAlertsCompraResponse.rows) {
