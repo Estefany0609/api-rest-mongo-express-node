@@ -318,7 +318,7 @@ export const getAlertasPortafolios = async (req, res) => {
   try {
     // 1. Obtener todas las listas de tickers de la tabla listas_simuladores
     const listasResponse = await pool.query(
-      "SELECT id, tickers, nombre_lista, email FROM web_financial.listas_simuladores"
+      "SELECT id, tickers, nombre_lista, email FROM web_financial.listas_simuladores where email is not null"
     );
 
     if (!listasResponse.rows || listasResponse.rows.length === 0)
@@ -341,16 +341,56 @@ export const getAlertasPortafolios = async (req, res) => {
     LEFT OUTER JOIN (SELECT DISTINCT ON (ticker) * FROM web_financial.tos_eps where date is not null
     ORDER BY ticker, date DESC) eps ON eps.ticker = macd.ticker
     WHERE macd.date = $1 AND (total_stock_grade = 'EXCELLENT' OR total_stock_grade = 'GOOD' ) AND correlation > 0.6
-    AND (signal_alert = 'Señal de Compra' OR signal_alert = 'Señal de Venta' OR signal_alert = 'Alerta Yellow')
+    AND signal_alert = 'Señal de Compra'
+`;
+    const generalAlertsQueryCompra = `
+    SELECT ticker, (preassure_daily*0.05) +(_5_days_presion*0.1)+(_10_days_presion*0.15)+(_20_days_presion*0.25)+(_50_days_presion*0.25)+(_100_days_presion*0.1)+(_200_days_presion*0.07)+(_260_days_presion*0.03) presion_volumen_mediano 
+	  FROM web_financial.listado_historico_general 
+	  WHERE date = $1 AND signal_alert_mp = 'Señal de Compra' AND  (signal_alert_cp = 'Compra' OR signal_alert_cp = 'Señal de Compra')
+	  AND (total_stock_grade = 'EXC' OR total_stock_grade = 'GD' ) AND correlation > 0.6 AND (preassure_daily*0.05 + _5_days_presion*0.1 + _10_days_presion*0.15 + _20_days_presion*0.25 + _50_days_presion*0.25 + _100_days_presion*0.1 + _200_days_presion*0.07 + _260_days_presion*0.03) > 0
+	  ORDER BY presion_volumen_mediano DESC LIMIT 5
+`;
+    const generalAlertsQueryVenta = `
+    SELECT ticker, (preassure_daily*0.05) +(_5_days_presion*0.1)+(_10_days_presion*0.15)+(_20_days_presion*0.25)+(_50_days_presion*0.25)+(_100_days_presion*0.1)+(_200_days_presion*0.07)+(_260_days_presion*0.03) presion_volumen_mediano 
+	  FROM web_financial.listado_historico_general 
+	  WHERE date = $1 AND signal_alert_mp = 'Señal de Venta' AND  (signal_alert_cp = 'Venta' OR signal_alert_cp = 'Señal de Venta')
+	  AND (total_stock_grade = 'RG-' OR total_stock_grade = 'BAD' ) AND correlation < 0.4 AND (preassure_daily*0.05 + _5_days_presion*0.1 + _10_days_presion*0.15 + _20_days_presion*0.25 + _50_days_presion*0.25 + _100_days_presion*0.1 + _200_days_presion*0.07 + _260_days_presion*0.03) < 0
+	  ORDER BY presion_volumen_mediano ASC LIMIT 5
 `;
 
-    const generalAlertsResponse = await pool.query(generalAlertsQuery, [today]);
+    const generalAlertsQueryYellow = `
+    SELECT ticker, (preassure_daily*0.05) +(_5_days_presion*0.1)+(_10_days_presion*0.15)+(_20_days_presion*0.25)+(_50_days_presion*0.25)+(_100_days_presion*0.1)+(_200_days_presion*0.07)+(_260_days_presion*0.03) presion_volumen_mediano 
+	  FROM web_financial.listado_historico_general 
+	  WHERE date = $1 AND signal_alert_mp = 'Alerta Yellow' AND  (signal_alert_cp = 'Venta' OR signal_alert_cp = 'Señal de Venta' OR signal_alert_cp = 'Alerta Yellow')
+	  AND (total_stock_grade = 'EXC' OR total_stock_grade = 'GD' ) AND correlation > 0.6 AND (preassure_daily*0.05 + _5_days_presion*0.1 + _10_days_presion*0.15 + _20_days_presion*0.25 + _50_days_presion*0.25 + _100_days_presion*0.1 + _200_days_presion*0.07 + _260_days_presion*0.03) < 0
+	  ORDER BY presion_volumen_mediano ASC LIMIT 5
+`;
+
+    /* AND(signal_alert = 'Señal de Compra' OR signal_alert = 'Señal de Venta' OR signal_alert = 'Alerta Yellow') */
+
+    const generalAlertsCompraResponse = await pool.query(
+      generalAlertsQueryCompra,
+      [today]
+    );
+    const generalAlertsVentaResponse = await pool.query(
+      generalAlertsQueryVenta,
+      [today]
+    );
+    const generalAlertsYellowResponse = await pool.query(
+      generalAlertsQueryYellow,
+      [today]
+    );
 
     let generalCompras = [];
     let generalVentas = [];
     let generalYellow = [];
 
-    for (let alerta of generalAlertsResponse.rows) {
+    let getLimitedList = (arr) => {
+      if (arr.length <= 5) return arr.join(", ");
+      return arr.slice(0, 5).join(", ") /* + " y más..." */;
+    };
+
+    /* for (let alerta of generalAlertsResponse.rows) {
       if (alerta.signal_alert === "Señal de Compra") {
         generalCompras.push(alerta.ticker);
       } else if (alerta.signal_alert === "Señal de Venta") {
@@ -358,32 +398,54 @@ export const getAlertasPortafolios = async (req, res) => {
       } else {
         generalYellow.push(alerta.ticker);
       }
+    } */
+
+    // Procesar las respuestas de compra
+    for (let alerta of generalAlertsCompraResponse.rows) {
+      generalCompras.push(alerta.ticker);
+    }
+
+    // Procesar las respuestas de venta
+    for (let alerta of generalAlertsVentaResponse.rows) {
+      generalVentas.push(alerta.ticker);
+    }
+
+    // Procesar las respuestas de alerta yellow
+    for (let alerta of generalAlertsYellowResponse.rows) {
+      generalYellow.push(alerta.ticker);
     }
 
     if (generalCompras.length > 0 || generalVentas.length > 0) {
-      let generalMensaje = `<div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
-    Estas son las acciones recomendadas generales que dieron `;
+      let generalMensaje = `<hr><p style="text-align: justify;">El servicio que a continuación se presenta destaca una selección exclusiva de 5 acciones para cada tipo de alerta. Esta selección se origina a partir de la aplicación meticulosa de diversos filtros y características específicas, diseñados para proporcionar una visión clara y objetiva de los movimientos del mercado.</p>`;
 
       if (generalCompras.length > 0) {
-        generalMensaje += `<div class="alert buy"><span style="color: green; font-weight: bold; text-decoration: underline;">Señal de Compra:</span> ${generalCompras.join(
-          ", "
+        generalMensaje += `<p>Acciones con fundamentos económicos excelentes que el día de hoy dieron señal de compra a mediano plazo:</p>`;
+        generalMensaje += `<div class="alert buy"><span style="color: green; font-weight: bold; text-decoration: underline;">Señal de Compra:</span> ${getLimitedList(
+          generalCompras
         )}</div>`;
       }
       if (generalVentas.length > 0) {
-        generalMensaje += `<div class="alert sell"><span style="color: red; font-weight: bold; text-decoration: underline;">Señal de Venta:</span> ${generalVentas.join(
-          ", "
+        generalMensaje += `<p>Acciones con fundamentos económicos regulares y malos que el día de hoy dieron señal de venta a mediano plazo:</p>`;
+        generalMensaje += `<div class="alert sell"><span style="color: red; font-weight: bold; text-decoration: underline;">Señal de Venta:</span> ${getLimitedList(
+          generalVentas
         )}</div>`;
       }
       if (generalYellow.length > 0) {
-        generalMensaje += `<div class="alert yellow"><span style="font-weight: bold; text-decoration: underline;">Alerta Yellow:</span> ${generalYellow.join(
-          ", "
+        generalMensaje += `<p>Acciones que a pesar de poseer fundamentos económicos de carácter regular a bajo, han emitido hoy una 'Alerta Yellow' a mediano plazo. Esto sugiere la posibilidad de una futura señal de venta:</p>`;
+        generalMensaje += `<div class="alert yellow"><span style="font-weight: bold; text-decoration: underline;">Alerta Yellow:</span> ${getLimitedList(
+          generalYellow
         )}</div>`;
       }
 
-      generalMensaje += "</div>"; // Cierra el div
+      generalMensaje += `
+<p>Para un análisis más detallado de las señales y alertas, le animamos a visitar nuestro sitio web en <a href="https://ldms.vercel.app/">LDMS</a>, específicamente en la sección de filtros. Allí podrá interactuar y examinar los variados escenarios disponibles.</p>
+<p>Estamos comprometidos en proporcionarle herramientas precisas y actualizadas para ayudarle en sus decisiones de inversión.</p>
+<p>Atentamente,</p>
+<p>El equipo de LDMS</p>
+`;
+
       mensajesGenerales.push(generalMensaje);
     }
-
     // 2. Iterar sobre cada lista y buscar alertas
     for (let lista of listasResponse.rows) {
       const tickersArray = lista.tickers
@@ -420,20 +482,20 @@ export const getAlertasPortafolios = async (req, res) => {
         // Solo añadir el mensaje si hay al menos una señal de compra o venta
 
         let mensaje = `<div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
-En el portafilio <span style="color: blue; font-weight: bold; text-decoration: underline;">${lista.nombre_lista}</span>, estas son las acciones que dieron `;
+Señales para el Día de Hoy para el portafolio <span style="color: blue; font-weight: bold; text-decoration: underline;"> ${lista.nombre_lista}</span> `;
 
         if (compras.length > 0) {
-          mensaje += `<div class="alert buy"><span style="color: green; font-weight: bold; text-decoration: underline;">Señal de Compra:</span> ${compras.join(
-            ", "
-          )}</div>`;
-        }
-        if (ventas.length > 0) {
-          mensaje += `<div class="alert sell"><span style="color: red; font-weight: bold; text-decoration: underline;">Señal de Venta:</span> ${ventas.join(
+          mensaje += `<div class="alert buy"><span style="color: green; font-weight: bold; text-decoration: underline;">Compra:</span> Las acciones que presentan señales positivas para adquirir hoy son: ${compras.join(
             ", "
           )}</div>`;
         }
         if (yellow.length > 0) {
-          mensaje += `<div class="alert yellow"><span style="font-weight: bold; text-decoration: underline;">Alerta Yellow:</span> ${yellow.join(
+          mensaje += `<div class="alert yellow"><span style="font-weight: bold; text-decoration: underline;">Alerta Yellow:</span> Le recomendamos proceder con cautela, estas acciones han mostrado alertas que ameritan su atención. ${yellow.join(
+            ", "
+          )}</div>`;
+        }
+        if (ventas.length > 0) {
+          mensaje += `<div class="alert sell"><span style="color: red; font-weight: bold; text-decoration: underline;">Venta:</span> En su portafolio, las siguientes acciones han indicado señales de venta:  ${ventas.join(
             ", "
           )}</div>`;
         }
@@ -462,6 +524,7 @@ En el portafilio <span style="color: blue; font-weight: bold; text-decoration: u
 
     // Tu código existente
     const templatePath = path.join(__dirname, "../utils/emailTemplate.html");
+    /* const templatePath = path.join(__dirname, "../utils/emailTemplate.html"); */
     const template = fs.readFileSync(templatePath, "utf-8");
 
     // Junta todos los mensajes en un solo string
@@ -484,13 +547,6 @@ En el portafilio <span style="color: blue; font-weight: bold; text-decoration: u
           to: email,
           subject: "Alertas de compra y venta Portafolios - LDMS",
           html: customizedTemplate,
-          /*  attachments: [
-            {
-              filename: "logonew.png",
-              path: "../public/images/logonew.png",
-              cid: "logoimage",
-            },
-          ], */
         };
 
         await sendMailAsync(mailOptions);
