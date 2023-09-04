@@ -368,7 +368,7 @@ export const getAlertasPortafolios = async (req, res) => {
 
     /* AND(signal_alert = 'Señal de Compra' OR signal_alert = 'Señal de Venta' OR signal_alert = 'Alerta Yellow') */
 
-    const generalAlertsCompraResponse = await pool.query(
+    /* const generalAlertsCompraResponse = await pool.query(
       generalAlertsQueryCompra,
       [today]
     );
@@ -379,7 +379,7 @@ export const getAlertasPortafolios = async (req, res) => {
     const generalAlertsYellowResponse = await pool.query(
       generalAlertsQueryYellow,
       [today]
-    );
+    ); */
 
     let generalCompras = [];
     let generalVentas = [];
@@ -398,10 +398,10 @@ export const getAlertasPortafolios = async (req, res) => {
       } else {
         generalYellow.push(alerta.ticker);
       }
-    }   */ 
+    }   */
 
     // Procesar las respuestas de compra
-    for (let alerta of generalAlertsCompraResponse.rows) {
+    /*  for (let alerta of generalAlertsCompraResponse.rows) {
       generalCompras.push(alerta.ticker);
     }
 
@@ -413,7 +413,7 @@ export const getAlertasPortafolios = async (req, res) => {
     // Procesar las respuestas de alerta yellow
     for (let alerta of generalAlertsYellowResponse.rows) {
       generalYellow.push(alerta.ticker);
-    }
+    } */
 
     if (generalCompras.length > 0 || generalVentas.length > 0) {
       let generalMensaje = `<hr><p style="text-align: justify;">El servicio que a continuación se presenta destaca una selección exclusiva de 5 acciones para cada tipo de alerta. Esta selección se origina a partir de la aplicación meticulosa de diversos filtros y características específicas, diseñados para proporcionar una visión clara y objetiva de los movimientos del mercado.</p>`;
@@ -481,23 +481,26 @@ export const getAlertasPortafolios = async (req, res) => {
       if (compras.length > 0 || ventas.length > 0) {
         // Solo añadir el mensaje si hay al menos una señal de compra o venta
 
-        let mensaje = `<div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
-Señales para el Día de Hoy para el portafolio <span style="color: blue; font-weight: bold; text-decoration: underline;"> ${lista.nombre_lista}</span> `;
+        let mensaje = `<div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;"> 
+
+En su portafolio <span style="color: blue; font-weight: bold; text-decoration: underline;"> ${lista.nombre_lista}</span> en el dia de hoy se dispararon las siguientes Señales en el Mediano Plazo:`;
 
         if (compras.length > 0) {
-          mensaje += `<div class="alert buy"><span style="color: green; font-weight: bold; text-decoration: underline;">Compra:</span> Las acciones que presentan señales positivas para adquirir hoy son: ${compras.join(
+          mensaje += `<div class="alert buy"><span style="color: green; font-weight: bold; text-decoration: underline;">Señales de Compra:</span> Las acciones dispararon Señales de Compra:  <br/> <br/><span style="font-weight: bold; text-decoration: underline;"> ${compras.join(
             ", "
-          )}</div>`;
+          )}</span></div>`;
         }
         if (yellow.length > 0) {
-          mensaje += `<div class="alert yellow"><span style="font-weight: bold; text-decoration: underline;">Alerta Yellow:</span> Le recomendamos proceder con cautela, estas acciones han mostrado alertas que ameritan su atención. ${yellow.join(
+          mensaje += `<div class="alert yellow"><span style="font-weight: bold; text-decoration: underline;">Alerta Yellow:</span> En las siguientes acciones se han disparado las alertas Yellow. Le recomendamos proceder con cautela. Estas acciones ameritan su atencion. <br/><br/>
+          <span style="font-weight: bold; color:rgba(255, 196, 0, 0.925); text-decoration: underline;">${yellow.join(
             ", "
-          )}</div>`;
+          )}</span> 
+          </div>`;
         }
         if (ventas.length > 0) {
-          mensaje += `<div class="alert sell"><span style="color: red; font-weight: bold; text-decoration: underline;">Venta:</span> En su portafolio, las siguientes acciones han indicado señales de venta:  ${ventas.join(
+          mensaje += `<div class="alert sell"><span style="color: red; font-weight: bold; text-decoration: underline;">Señal de Venta:</span> Las acciones mencioandas a continuacion han disparado Senal de Venta en el Mediano Plazo.  Tome sus previsiones. <br/> <br/><span style="font-weight: bold; text-decoration: underline;"> ${ventas.join(
             ", "
-          )}</div>`;
+          )}</span> </div>`;
         }
 
         mensaje += "</div>"; // Cierra el div
@@ -532,7 +535,7 @@ Señales para el Día de Hoy para el portafolio <span style="color: blue; font-w
 
     for (const email in mensajesPorEmail) {
       // Combina mensajes específicos y generales
-      let mensajes = [...mensajesPorEmail[email], ...mensajesGenerales];
+      let mensajes = [...mensajesPorEmail[email] /* ...mensajesGenerales */];
       let mensajeCompleto = mensajes.join("");
 
       const customizedTemplate = template.replace(
@@ -545,6 +548,7 @@ Señales para el Día de Hoy para el portafolio <span style="color: blue; font-w
         const mailOptions = {
           from: process.env.EMAIL_USER,
           to: email,
+          /* to: "estefanymeleon@hotmail.com", */
           subject: "Alertas de compra y venta Portafolios - LDMS",
           html: customizedTemplate,
         };
