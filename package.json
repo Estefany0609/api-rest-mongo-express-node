@@ -24,6 +24,7 @@
     "google-auth-library": "^8.9.0",
     "googleapis": "^118.0.0",
     "jsonwebtoken": "^9.0.0",
+    "moment": "^2.29.4",
     "moment-timezone": "^0.5.43",
     "mongoose": "^6.6.1",
     "msal-node": "^0.0.1-security",

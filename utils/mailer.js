@@ -9,6 +9,15 @@ const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REDIRECT_URL = "urn:ietf:wg:oauth:2.0:oob";
 const oAuth2Client = new OAuth2Client(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL);
 
+oAuth2Client.setCredentials({
+  refresh_token: process.env.GMAIL_REFRESH_TOKEN,
+});
+
+async function getAccessToken() {
+  const response = await oAuth2Client.getAccessToken();
+  return response.token;
+}
+
 // Esta función se encargará de generar el token de acceso
 async function generateAccessToken() {
   const authorizeUrl = oAuth2Client.generateAuthUrl({
@@ -36,9 +45,9 @@ async function generateAccessToken() {
 
 // Descomenta la siguiente línea si necesitas generar un token
 //generateAccessToken();
-///
+///;
 
-const transporter = nodemailer.createTransport({
+export const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     type: "OAuth2",
@@ -46,8 +55,30 @@ const transporter = nodemailer.createTransport({
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     refreshToken: process.env.GMAIL_REFRESH_TOKEN,
-    accessToken: process.env.GMAIL_ACCESS_TOKEN, // es opcional, puede ser útil para tokens que ya se han generado
   },
 });
 
-export default transporter;
+transporter.on("token", (token) => {
+  console.log("A new access token was generated");
+  console.log("User: %s", token.user);
+  console.log("Access Token: %s", token.accessToken);
+  console.log("Expires: %s", new Date(token.expires));
+});
+
+export async function sendMail(mailOptions) {
+  console.log("Intentando enviar correo...");
+  const accessToken = await getAccessToken();
+  transporter.set("oauth2.access.token", accessToken);
+
+  return new Promise((resolve, reject) => {
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error("Error enviando el correo:", error);
+        reject(error);
+      } else {
+        console.log("Correo enviado correctamente:", info);
+        resolve(info);
+      }
+    });
+  });
+}

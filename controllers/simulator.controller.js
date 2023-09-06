@@ -1,9 +1,10 @@
 import { pool } from "../database/connectdb.js";
-import transporter from "../utils/mailer.js";
+import { sendMail } from "../utils/mailer.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import moment from "moment";
 
 export const getSimulator = async (req, res) => {
   try {
@@ -325,11 +326,16 @@ export const getAlertasPortafolios = async (req, res) => {
       throw { code: 11000 };
 
     // Aquí verificamos si el parámetro date está presente, de lo contrario, utilizamos la fecha actual.
-    const dateFromParams = req.params.date;
-    const today = dateFromParams
-      ? dateFromParams
-      : new Date().toISOString().split("T")[0];
 
+    const getNewYorkDate = () => {
+      const newYorkTime = moment().tz("America/New_York");
+      return newYorkTime.format("YYYY-MM-DD");
+    };
+
+    const dateFromParams = req.params.date;
+    const today = dateFromParams ? dateFromParams : getNewYorkDate();
+
+    console.log(today);
     let mensajes = [];
     let mensajesPorEmail = {};
     let mensajesGenerales = [];
@@ -498,7 +504,7 @@ En su portafolio <span style="color: blue; font-weight: bold; text-decoration: u
           </div>`;
         }
         if (ventas.length > 0) {
-          mensaje += `<div class="alert sell"><span style="color: red; font-weight: bold; text-decoration: underline;">Señal de Venta:</span> Las acciones mencioandas a continuacion han disparado Senal de Venta en el Mediano Plazo.  Tome sus previsiones. <br/> <br/><span style="font-weight: bold; text-decoration: underline;"> ${ventas.join(
+          mensaje += `<div class="alert sell"><span style="color: red; font-weight: bold; text-decoration: underline;">Señal de Venta:</span> Las acciones mencioandas a continuacion han disparado Señal de Venta en el Mediano Plazo.  Tome sus previsiones. <br/> <br/><span style="font-weight: bold; text-decoration: underline;"> ${ventas.join(
             ", "
           )}</span> </div>`;
         }
@@ -553,7 +559,8 @@ En su portafolio <span style="color: blue; font-weight: bold; text-decoration: u
           html: customizedTemplate,
         };
 
-        await sendMailAsync(mailOptions);
+        await sendMail(mailOptions);
+
         //console.log(`Correo enviado a ${email} correctamente.`);
       } catch (error) {
         console.log(error);
