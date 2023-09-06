@@ -288,6 +288,24 @@ export const getAllDataG = async (req, res) => {
   }
 };
 
+const getHistoricalPrice = async (req, res) => {
+  try {
+    const { ticker } = req.body;
+
+    let query =
+      "SELECT date, open, high, low, close FROM web_financial.tos_h_p_general_consolidado WHERE TICKER = $1 ORDER BY date ASC  ";
+    const values = [ticker];
+
+    let response = await pool.query(query, values);
+
+    if (!response.rows) throw { code: 11000 };
+    return res.json(response.rows);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "Error de servidor" });
+  }
+};
+
 // Exportar las funciones que se utilizarán en otros archivos si es necesario
 export {
   getEMAData,
@@ -301,4 +319,5 @@ export {
   getEarningsData,
   getFases,
   getAlgoritmoData,
+  getHistoricalPrice,
 };
