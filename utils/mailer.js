@@ -58,12 +58,12 @@ export const transporter = nodemailer.createTransport({
   },
 });
 
-transporter.on("token", (token) => {
+/* transporter.on("token", (token) => {
   console.log("A new access token was generated");
   console.log("User: %s", token.user);
   console.log("Access Token: %s", token.accessToken);
   console.log("Expires: %s", new Date(token.expires));
-});
+}); */
 
 export async function sendMail(mailOptions) {
   console.log("Intentando enviar correo...");
