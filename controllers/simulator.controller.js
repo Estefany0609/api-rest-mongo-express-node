@@ -335,7 +335,7 @@ export const getAlertasPortafolios = async (req, res) => {
     const dateFromParams = req.params.date;
     const today = dateFromParams ? dateFromParams : getNewYorkDate();
 
-    console.log(today);
+    //console.log(today);
     let mensajes = [];
     let mensajesPorEmail = {};
     let mensajesGenerales = [];
@@ -538,6 +538,7 @@ En su portafolio <span style="color: blue; font-weight: bold; text-decoration: u
 
     // Junta todos los mensajes en un solo string
     let mensajeCompleto = mensajes.join("");
+    let sendPromises = [];
 
     for (const email in mensajesPorEmail) {
       // Combina mensajes específicos y generales
@@ -549,25 +550,39 @@ En su portafolio <span style="color: blue; font-weight: bold; text-decoration: u
         mensajeCompleto
       );
 
+      /* tener en cuenta, para futuro desarrollo
+
+      Automatización del envío por lotes: Puedes estructurar tu sistema para que envíe correos en lotes (por ejemplo, 50 correos, luego una pausa, luego otros 50) automáticamente, reduciendo así el riesgo de alcanzar los límites rápidamente.
+
+Alertas de volumen: Establece alertas que te notifiquen cuando te acerques a, digamos, el 80% de tu límite diario, para que puedas tomar medidas proactivas. */
       // Envia el correo
-      try {
-        const mailOptions = {
-          from: process.env.EMAIL_USER,
-          to: email,
-          /* to: "estefanymeleon@hotmail.com", */
-          subject: "Alertas de compra y venta Portafolios - LDMS",
-          html: customizedTemplate,
-        };
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        /* to: "estefanymeleon@hotmail.com", */
+        subject: "Alertas de compra y venta Portafolios - LDMS",
+        html: customizedTemplate,
+      };
 
-        await sendMail(mailOptions);
-
-        //console.log(`Correo enviado a ${email} correctamente.`);
-      } catch (error) {
-        console.log(error);
-      }
+      // Aquí es donde añadimos la promesa de enviar el correo al array
+      sendPromises.push(
+        sendMail(mailOptions).catch((error) => {
+          console.log(`Error al enviar correo a ${email}:`, error);
+        })
+      );
+      //console.log(`Correo enviado a ${email} correctamente.`);
     }
 
-    res.status(200).json({ message: "Mensajes enviados correctamente." });
+    // Usamos Promise.all() para esperar que todas las promesas se resuelvan (es decir, que todos los correos se envíen) antes de responder.
+    Promise.all(sendPromises)
+      .then(() => {
+        res.status(200).json({ message: "Mensajes enviados correctamente." });
+      })
+      .catch(() => {
+        res
+          .status(500)
+          .json({ message: "Hubo un error al enviar algunos correos." });
+      });
   } catch (error) {
     console.log(error);
     if (error.code === 11001) {
