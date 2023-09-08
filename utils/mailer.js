@@ -9,15 +9,27 @@ const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REDIRECT_URL = "urn:ietf:wg:oauth:2.0:oob";
 const oAuth2Client = new OAuth2Client(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL);
 
+let accessToken = "";
+let accessTokenExpiry = null;
+
 oAuth2Client.setCredentials({
   refresh_token: process.env.GMAIL_REFRESH_TOKEN,
 });
 
 async function getAccessToken() {
   const response = await oAuth2Client.getAccessToken();
-  return response.token;
+  accessToken = response.token;
+
+  // Establece la fecha de expiración del token (por lo general, es de 3600 segundos)
+  accessTokenExpiry = Date.now() + response.expires_in * 1000;
+
+  return accessToken;
 }
 
+function isTokenValid() {
+  if (!accessToken || !accessTokenExpiry) return false;
+  return accessTokenExpiry > Date.now();
+}
 // Esta función se encargará de generar el token de acceso
 async function generateAccessToken() {
   const authorizeUrl = oAuth2Client.generateAuthUrl({
@@ -66,17 +78,29 @@ export const transporter = nodemailer.createTransport({
 }); */
 
 export async function sendMail(mailOptions) {
-  console.log("Intentando enviar correo...");
-  const accessToken = await getAccessToken();
+  //console.log("Intentando enviar correo...");
+
+  if (!isTokenValid()) {
+    accessToken = await getAccessToken();
+  }
+
   transporter.set("oauth2.access.token", accessToken);
 
   return new Promise((resolve, reject) => {
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
-        console.error("Error enviando el correo:", error);
+        //console.error("Error enviando el correo:", error);
+
+        // Si el error es debido a un token inválido, intenta obtener uno nuevo y reenviar
+        if (error.response && error.response.includes("invalid_grant")) {
+          console.log("Refrescando token...");
+          accessToken = ""; // Borrar el token actual
+          return sendMail(mailOptions); // Intenta de nuevo
+        }
+
         reject(error);
       } else {
-        console.log("Correo enviado correctamente:", info);
+        //console.log("Correo enviado correctamente:", info);
         resolve(info);
       }
     });
