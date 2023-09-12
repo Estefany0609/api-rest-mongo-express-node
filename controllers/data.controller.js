@@ -306,6 +306,51 @@ const getHistoricalPrice = async (req, res) => {
   }
 };
 
+// Función para obtener los datos de los MACD
+const getMacdData = async (req, res) => {
+  const { ticker } = req.body;
+  try {
+    // Realiza las tres consultas SQL de manera secuencial
+    /* const resultCorto = await pool.query(
+      `
+      SELECT date, macd_5 linea_corta, macd_10 linea_larga, histogram_macd, signal_alert
+      FROM web_financial.h_p_macd_cp
+      WHERE ticker = $1
+      ORDER BY date ASC
+    `,
+      [ticker]
+    ); */
+
+    const resultMediano = await pool.query(
+      `
+      SELECT date,  macd_20 linea_corta, macd_50 linea_larga, histogram_macd, signal_alert
+      FROM web_financial.h_p_macd_mp
+      WHERE ticker = $1
+      ORDER BY date ASC
+    `,
+      [ticker]
+    );
+
+    /* const resultLargo = await pool.query(
+      `
+      SELECT date, macd_100 linea_corta, macd_200 linea_larga, histogram_macd, signal_alert
+      FROM web_financial.h_p_macd_lp
+      WHERE ticker = $1
+      ORDER BY date ASC
+    `,
+      [ticker]
+    );
+ */
+    // Devuelve los resultados en un objeto
+    return res.json({
+      /* corto: resultCorto.rows, */
+      mediano: resultMediano.rows,
+      /* largo: resultLargo.rows, */
+    });
+  } catch (error) {
+    throw error;
+  }
+};
 // Exportar las funciones que se utilizarán en otros archivos si es necesario
 export {
   getEMAData,
@@ -320,4 +365,5 @@ export {
   getFases,
   getAlgoritmoData,
   getHistoricalPrice,
+  getMacdData,
 };

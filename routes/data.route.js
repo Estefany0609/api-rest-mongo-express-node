@@ -13,6 +13,7 @@ import {
   getFases,
   getAlgoritmoData,
   getHistoricalPrice,
+  getMacdData,
 } from "../controllers/data.controller.js";
 
 const router = Router();
@@ -30,5 +31,6 @@ router.post("/earnings", getEarningsData);
 router.post("/fases", getFases);
 router.post("/algoritmo", getAlgoritmoData);
 router.post("/price", getHistoricalPrice);
+router.post("/macd", getMacdData);
 
 export default router;
