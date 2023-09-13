@@ -77,32 +77,37 @@ export const transporter = nodemailer.createTransport({
   console.log("Expires: %s", new Date(token.expires));
 }); */
 
-export async function sendMail(mailOptions) {
-  //console.log("Intentando enviar correo...");
+export function sendMail(mailOptions) {
+  return new Promise(async (resolve, reject) => {
+    if (!isTokenValid()) {
+      try {
+        accessToken = await getAccessToken();
+        transporter.set("oauth2.access.token", accessToken);
+      } catch (error) {
+        return reject(new Error("Error obteniendo el token de acceso"));
+      }
+    }
 
-  if (!isTokenValid()) {
-    accessToken = await getAccessToken();
-  }
-
-  transporter.set("oauth2.access.token", accessToken);
-
-  return new Promise((resolve, reject) => {
-    transporter.sendMail(mailOptions, (error, info) => {
+    transporter.sendMail(mailOptions, async (error, info) => {
       if (error) {
-        //console.error("Error enviando el correo:", error);
-
         // Si el error es debido a un token inválido, intenta obtener uno nuevo y reenviar
         if (error.response && error.response.includes("invalid_grant")) {
           console.log("Refrescando token...");
-          accessToken = ""; // Borrar el token actual
-          return sendMail(mailOptions); // Intenta de nuevo
+
+          try {
+            accessToken = await getAccessToken();
+            transporter.set("oauth2.access.token", accessToken);
+            const retryInfo = await sendMail(mailOptions); // Intenta de nuevo
+            return resolve(retryInfo);
+          } catch (retryError) {
+            return reject(retryError);
+          }
         }
 
-        reject(error);
-      } else {
-        //console.log("Correo enviado correctamente:", info);
-        resolve(info);
+        return reject(error);
       }
+
+      return resolve(info);
     });
   });
 }
