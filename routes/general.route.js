@@ -10,6 +10,7 @@ import {
   getSectores,
   getSubIndustrias,
   getCompanyProfile,
+  getIncomeStatement,
 } from "../controllers/historical.controller.js";
 import { requireToken } from "../middlewares/requireToken.js";
 const router = Router();
@@ -22,6 +23,7 @@ router.post("/industrias", requireToken, getIndustrias);
 router.post("/subIndustrias", requireToken, getSubIndustrias);
 
 router.post("/profile", newProfile);
+router.post("/IncomeStatement/:period", getIncomeStatement);
 
 router.get("/fileGoogle", readSheet);
 router.get("/fileGoogleFilter", requireToken, readSheetFilter);
