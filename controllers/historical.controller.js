@@ -613,62 +613,37 @@ export const getIncomeStatement = async (req, res) => {
           continue;
         }
 
-        // Procesar cada elemento de data de forma asíncrona
-        for (const item of data) {
-          // Aquí puedes realizar la consulta para cada elemento en la base de datos utilizando pool.query
+        const values = data.map((item) => {
+          return `(
+    '${item.date}', '${item.symbol}', '${item.reportedCurrency}', '${item.cik}',
+    '${item.fillingDate}', '${item.acceptedDate}', '${item.calendarYear}', '${item.period}',
+    ${item.revenue}, ${item.costOfRevenue}, ${item.grossProfit}, ${item.grossProfitRatio},
+    ${item.researchAndDevelopmentExpenses}, ${item.generalAndAdministrativeExpenses},
+    ${item.sellingAndMarketingExpenses}, ${item.sellingGeneralAndAdministrativeExpenses},
+    ${item.otherExpenses}, ${item.operatingExpenses}, ${item.costAndExpenses},
+    ${item.interestIncome}, ${item.interestExpense}, ${item.depreciationAndAmortization},
+    ${item.ebitda}, ${item.ebitdaratio}, ${item.operatingIncome}, ${item.operatingIncomeRatio},
+    ${item.totalOtherIncomeExpensesNet}, ${item.incomeBeforeTax}, ${item.incomeBeforeTaxRatio},
+    ${item.incomeTaxExpense}, ${item.netIncome}, ${item.netIncomeRatio}, ${item.eps}, ${item.epsdiluted},
+    ${item.weightedAverageShsOut}, ${item.weightedAverageShsOutDil}, '${item.link}', '${item.finalLink}'
+  )`;
+        });
 
-          await pool.query(
-            "INSERT INTO web_financial.income_statement (" +
-              "date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period, " +
-              "revenue, cost_of_revenue, gross_profit, gross_profit_ratio, " +
-              "research_and_development_expenses, general_and_administrative_expenses, selling_and_marketing_expenses, selling_general_and_administrative_expenses, other_expenses, " +
-              "operating_expenses, cost_and_expenses, interest_income, interest_expense, depreciation_and_amortization, ebitda, ebitda_ratio, " +
-              "operating_income, operating_income_ratio, total_other_income_expenses_net, income_before_tax, income_before_tax_ratio, income_tax_expense, " +
-              "net_income, net_income_ratio, eps, eps_diluted, weighted_average_shs_out, weighted_average_shs_out_dil, " +
-              "link, final_link" +
-              ") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38)",
-            [
-              item.date,
-              item.symbol,
-              item.reportedCurrency,
-              item.cik,
-              item.fillingDate,
-              item.acceptedDate,
-              item.calendarYear,
-              item.period,
-              item.revenue,
-              item.costOfRevenue,
-              item.grossProfit,
-              item.grossProfitRatio,
-              item.researchAndDevelopmentExpenses,
-              item.generalAndAdministrativeExpenses,
-              item.sellingAndMarketingExpenses,
-              item.sellingGeneralAndAdministrativeExpenses,
-              item.otherExpenses,
-              item.operatingExpenses,
-              item.costAndExpenses,
-              item.interestIncome,
-              item.interestExpense,
-              item.depreciationAndAmortization,
-              item.ebitda,
-              item.ebitdaratio,
-              item.operatingIncome,
-              item.operatingIncomeRatio,
-              item.totalOtherIncomeExpensesNet,
-              item.incomeBeforeTax,
-              item.incomeBeforeTaxRatio,
-              item.incomeTaxExpense,
-              item.netIncome,
-              item.netIncomeRatio,
-              item.eps,
-              item.epsdiluted,
-              item.weightedAverageShsOut,
-              item.weightedAverageShsOutDil,
-              item.link,
-              item.finalLink,
-            ]
-          );
-        }
+        const query = `
+  INSERT INTO web_financial.income_statement (
+    date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period,
+    revenue, cost_of_revenue, gross_profit, gross_profit_ratio,
+    research_and_development_expenses, general_and_administrative_expenses,
+    selling_and_marketing_expenses, selling_general_and_administrative_expenses, other_expenses,
+    operating_expenses, cost_and_expenses, interest_income, interest_expense, depreciation_and_amortization, ebitda, ebitda_ratio,
+    operating_income, operating_income_ratio, total_other_income_expenses_net, income_before_tax, income_before_tax_ratio, income_tax_expense,
+    net_income, net_income_ratio, eps, eps_diluted, weighted_average_shs_out, weighted_average_shs_out_dil, link, final_link
+  )
+  VALUES
+    ${values.join(", ")}
+`;
+
+        await pool.query(query);
 
         success++;
       } catch (error) {
@@ -705,6 +680,108 @@ export const getIncomeStatement = async (req, res) => {
   }
 };
 
+export const getBalanceSheet = async (req, res) => {
+  try {
+    const { symbols } = req.body;
+    const { period } = req.params;
+
+    const endpointBase =
+      "https://financialmodelingprep.com/api/v3/balance-sheet-statement/";
+
+    let count = 0;
+    let success = 0;
+    let failure = 0;
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
+
+    for (let i = 0; i < symbols.length; i++) {
+      const symbol = symbols[i];
+      const limit = period === "annual" ? 10 : period === "quarter" ? 45 : 10; // Cambiar límite según el período
+
+      const endpoint = `${endpointBase}${symbol}?period=${period}&limit=${limit}&apikey=${api_key}`;
+
+      try {
+        // Realizar la solicitud HTTP a la API
+        const response = await fetch(endpoint);
+
+        if (!response.ok) {
+          // Si la respuesta no es exitosa, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const data = await response.json();
+
+        // Verificar si la respuesta es un array vacío o si contiene datos
+        if (!Array.isArray(data) || data.length === 0) {
+          // Si la respuesta es un array vacío, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const values = data.map((item) => {
+          return `(
+    '${item.date}', '${item.symbol}', '${item.reportedCurrency}', '${item.cik}',
+    '${item.fillingDate}', '${item.acceptedDate}', '${item.calendarYear}', '${item.period}',
+    ${item.cashAndCashEquivalents}, ${item.shortTermInvestments}, ${item.cashAndShortTermInvestments},
+    ${item.netReceivables}, ${item.inventory}, ${item.otherCurrentAssets}, ${item.totalCurrentAssets},
+    ${item.propertyPlantEquipmentNet}, ${item.goodwill}, ${item.intangibleAssets}, ${item.goodwillAndIntangibleAssets},
+    ${item.longTermInvestments}, ${item.taxAssets}, ${item.otherNonCurrentAssets}, ${item.totalNonCurrentAssets},
+    ${item.otherAssets}, ${item.totalAssets}, ${item.accountPayables}, ${item.shortTermDebt}, ${item.taxPayables},
+    ${item.deferredRevenue}, ${item.otherCurrentLiabilities}, ${item.totalCurrentLiabilities}, ${item.longTermDebt},
+    ${item.deferredRevenueNonCurrent}, ${item.deferredTaxLiabilitiesNonCurrent}, ${item.otherNonCurrentLiabilities},
+    ${item.totalNonCurrentLiabilities}, ${item.otherLiabilities}, ${item.capitalLeaseObligations}, ${item.totalLiabilities},
+    ${item.preferredStock}, ${item.commonStock}, ${item.retainedEarnings}, ${item.accumulatedOtherComprehensiveIncomeLoss},
+    ${item.othertotalStockholdersEquity}, ${item.totalStockholdersEquity}, ${item.totalEquity}, ${item.totalLiabilitiesAndStockholdersEquity},
+    ${item.minorityInterest}, ${item.totalLiabilitiesAndTotalEquity}, ${item.totalInvestments}, ${item.totalDebt},
+    ${item.netDebt}, '${item.link}', '${item.finalLink}'
+  )`;
+        });
+
+        const query = `
+  INSERT INTO web_financial.balance_sheet(
+    date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period, cash_and_cash_equivalents, short_term_investments, cash_and_short_term_investments, net_receivables, inventory, other_current_assets, total_current_assets, property_plant_equipment_net, goodwill, intangible_assets, goodwill_and_intangible_assets, long_term_investments, tax_assets, other_non_current_assets, total_non_current_assets, other_assets, total_assets, account_payables, short_term_debt, tax_payables, deferred_revenue, other_current_liabilities, total_current_liabilities, long_term_debt, deferred_revenue_non_current, deferred_tax_liabilities_non_current, other_non_current_liabilities, total_non_current_liabilities, other_liabilities, capital_lease_obligations, total_liabilities, preferred_stock, common_stock, retained_earnings, accumulated_other_comprehensive_income_loss, other_total_stockholders_equity, total_stockholders_equity, total_equity, total_liabilities_and_stockholders_equity, minority_interest, total_liabilities_and_total_equity, total_investments, total_debt, net_debt, link, final_link
+  )
+  VALUES
+    ${values.join(", ")}
+`;
+
+        await pool.query(query);
+
+        success++;
+      } catch (error) {
+        // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+        console.error(error);
+        failure++;
+        continue;
+      }
+
+      // Hacer una pausa de 4 segundos entre cada llamado a la API
+      count++;
+      if (count % 1500 === 0) {
+        console.log(
+          `Límite de llamados alcanzado. Haciendo una pausa de 1 minuto.`
+        );
+        await delay(60000); // Pausa de 1 minuto (60,000 ms)
+      } else {
+        await delay(4000); // Pausa de 4 segundos (4,000 ms)
+      }
+    }
+
+    console.log(`Llamados exitosos: ${success}, Llamados fallidos: ${failure}`);
+
+    return res.json({
+      success: true,
+      message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Ha ocurrido un error al obtener los estados de resultados",
+    });
+  }
+};
 //Alternativa buscando por ticker
 /*  let byTicker = await pool.query('SELECT * FROM web_financial.company_profile WHERE ticker = $1 ', [ticker]);
         if (byTicker.rows[0]) throw ({ code: 11000 }) */
