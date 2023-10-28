@@ -782,6 +782,137 @@ export const getBalanceSheet = async (req, res) => {
     });
   }
 };
+
+export const getCashFlow = async (req, res) => {
+  try {
+    const { symbols } = req.body;
+    const { period } = req.params;
+
+    const endpointBase =
+      "https://financialmodelingprep.com/api/v3/cash-flow-statement/";
+
+    let count = 0;
+    let success = 0;
+    let failure = 0;
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
+
+    for (let i = 0; i < symbols.length; i++) {
+      const symbol = symbols[i];
+      const limit = period === "annual" ? 10 : period === "quarter" ? 45 : 10; // Cambiar límite según el período
+
+      const endpoint = `${endpointBase}${symbol}?period=${period}&limit=${limit}&apikey=${api_key}`;
+
+      try {
+        // Realizar la solicitud HTTP a la API
+        const response = await fetch(endpoint);
+
+        if (!response.ok) {
+          // Si la respuesta no es exitosa, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const data = await response.json();
+
+        // Verificar si la respuesta es un array vacío o si contiene datos
+        if (!Array.isArray(data) || data.length === 0) {
+          // Si la respuesta es un array vacío, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const values = data.map((item) => {
+          return `(
+    '${item.date}', 
+    '${item.symbol}', 
+    '${item.reportedCurrency}', 
+    '${item.cik}',
+    '${item.fillingDate}', 
+    '${item.acceptedDate}', 
+    '${item.calendarYear}', 
+    '${item.period}',
+    ${item.netIncome}, 
+    ${item.depreciationAndAmortization}, 
+    ${item.deferredIncomeTax}, 
+    ${item.stockBasedCompensation}, 
+    ${item.changeInWorkingCapital}, 
+    ${item.accountsReceivables}, 
+    ${item.inventory}, 
+    ${item.accountsPayables}, 
+    ${item.otherWorkingCapital}, 
+    ${item.otherNonCashItems}, 
+    ${item.netCashProvidedByOperatingActivities}, 
+    ${item.investmentsInPropertyPlantAndEquipment}, 
+    ${item.acquisitionsNet}, 
+    ${item.purchasesOfInvestments}, 
+    ${item.salesMaturitiesOfInvestments}, 
+    ${item.otherInvestingActivites}, 
+    ${item.netCashUsedForInvestingActivites}, 
+    ${item.debtRepayment}, 
+    ${item.commonStockIssued}, 
+    ${item.commonStockRepurchased}, 
+    ${item.dividendsPaid}, 
+    ${item.otherFinancingActivites}, 
+    ${item.netCashUsedProvidedByFinancingActivities}, 
+    ${item.effectOfForexChangesOnCash}, 
+    ${item.netChangeInCash}, 
+    ${item.cashAtEndOfPeriod}, 
+    ${item.cashAtBeginningOfPeriod}, 
+    ${item.operatingCashFlow}, 
+    ${item.capitalExpenditure}, 
+    ${item.freeCashFlow}, 
+    '${item.link}', 
+    '${item.finalLink}'
+  )`;
+        });
+
+        console.log(values);
+
+        const query = `
+  INSERT INTO web_financial.cash_flow_statement (
+    date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period, net_income, depreciation_and_amortization, deferred_income_tax, stock_based_compensation, change_in_working_capital, accounts_receivables, inventory, accounts_payables, other_working_capital, other_non_cash_items, net_cash_provided_by_operating_activities, investments_in_property_plant_and_equipment, acquisitions_net, purchases_of_investments, sales_maturities_of_investments, other_investing_activities, net_cash_used_for_investing_activities, debt_repayment, common_stock_issued, common_stock_repurchased, dividends_paid, other_financing_activities, net_cash_used_provided_by_financing_activities, effect_of_forex_changes_on_cash, net_change_in_cash, cash_at_end_of_period, cash_at_beginning_of_period, operating_cash_flow, capital_expenditure, free_cash_flow, link, final_link
+  )
+  VALUES
+    ${values.join(", ")}
+`;
+
+        await pool.query(query);
+
+        success++;
+      } catch (error) {
+        // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+        console.error(error);
+        failure++;
+        continue;
+      }
+
+      // Hacer una pausa de 4 segundos entre cada llamado a la API
+      count++;
+      if (count % 1500 === 0) {
+        console.log(
+          `Límite de llamados alcanzado. Haciendo una pausa de 1 minuto.`
+        );
+        await delay(60000); // Pausa de 1 minuto (60,000 ms)
+      } else {
+        await delay(4000); // Pausa de 4 segundos (4,000 ms)
+      }
+    }
+
+    console.log(`Llamados exitosos: ${success}, Llamados fallidos: ${failure}`);
+
+    return res.json({
+      success: true,
+      message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Ha ocurrido un error al obtener los estados de resultados",
+    });
+  }
+};
 //Alternativa buscando por ticker
 /*  let byTicker = await pool.query('SELECT * FROM web_financial.company_profile WHERE ticker = $1 ', [ticker]);
         if (byTicker.rows[0]) throw ({ code: 11000 }) */
