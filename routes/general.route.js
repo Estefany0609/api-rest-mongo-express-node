@@ -13,6 +13,7 @@ import {
   getIncomeStatement,
   getBalanceSheet,
   getCashFlow,
+  getKeyMetrics,
 } from "../controllers/historical.controller.js";
 import { requireToken } from "../middlewares/requireToken.js";
 const router = Router();
@@ -28,6 +29,7 @@ router.post("/profile", newProfile);
 router.post("/IncomeStatement/:period", getIncomeStatement);
 router.post("/BalanceSheet/:period", getBalanceSheet);
 router.post("/CashFLow/:period", getCashFlow);
+router.post("/KeyMetrics/:period", getKeyMetrics);
 
 router.get("/fileGoogle", readSheet);
 router.get("/fileGoogleFilter", requireToken, readSheetFilter);
