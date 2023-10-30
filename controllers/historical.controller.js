@@ -1065,6 +1065,158 @@ export const getKeyMetrics = async (req, res) => {
     });
   }
 };
+
+export const getRatios = async (req, res) => {
+  try {
+    const { symbols } = req.body;
+    const { period } = req.params;
+
+    const endpointBase = "https://financialmodelingprep.com/api/v3/ratios/";
+
+    let count = 0;
+    let success = 0;
+    let failure = 0;
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
+
+    for (let i = 0; i < symbols.length; i++) {
+      const symbol = symbols[i];
+      const limit = period === "annual" ? 10 : period === "quarter" ? 45 : 10; // Cambiar límite según el período
+
+      const endpoint = `${endpointBase}${symbol}?period=${period}&limit=${limit}&apikey=${api_key}`;
+
+      try {
+        // Realizar la solicitud HTTP a la API
+        const response = await fetch(endpoint);
+
+        if (!response.ok) {
+          // Si la respuesta no es exitosa, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const data = await response.json();
+
+        // Verificar si la respuesta es un array vacío o si contiene datos
+        if (!Array.isArray(data) || data.length === 0) {
+          // Si la respuesta es un array vacío, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const values = data.map((item) => {
+          return `(
+    '${item.symbol}',
+    '${item.date}',
+    '${item.calendarYear}',
+    '${item.period}',
+    ${item.currentRatio},
+    ${item.quickRatio},
+    ${item.cashRatio},
+    ${item.daysOfSalesOutstanding},
+    ${item.daysOfInventoryOutstanding},
+    ${item.operatingCycle},
+    ${item.daysOfPayablesOutstanding},
+    ${item.cashConversionCycle},
+    ${item.grossProfitMargin},
+    ${item.operatingProfitMargin},
+    ${item.pretaxProfitMargin},
+    ${item.netProfitMargin},
+    ${item.effectiveTaxRate},
+    ${item.returnOnAssets},
+    ${item.returnOnEquity},
+    ${item.returnOnCapitalEmployed},
+    ${item.netIncomePerEBT},
+    ${item.ebtPerEbit},
+    ${item.ebitPerRevenue},
+    ${item.debtRatio},
+    ${item.debtEquityRatio},
+    ${item.longTermDebtToCapitalization},
+    ${item.totalDebtToCapitalization},
+    ${item.interestCoverage},
+    ${item.cashFlowToDebtRatio},
+    ${item.companyEquityMultiplier},
+    ${item.receivablesTurnover},
+    ${item.payablesTurnover},
+    ${item.inventoryTurnover},
+    ${item.fixedAssetTurnover},
+    ${item.assetTurnover},
+    ${item.operatingCashFlowPerShare},
+    ${item.freeCashFlowPerShare},
+    ${item.cashPerShare},
+    ${item.payoutRatio},
+    ${item.operatingCashFlowSalesRatio},
+    ${item.freeCashFlowOperatingCashFlowRatio},
+    ${item.cashFlowCoverageRatios},
+    ${item.shortTermCoverageRatios},
+    ${item.capitalExpenditureCoverageRatio},
+    ${item.dividendPaidAndCapexCoverageRatio},
+    ${item.priceBookValueRatio},
+    ${item.priceToBookRatio},
+    ${item.priceToSalesRatio},
+    ${item.priceEarningsRatio},
+    ${item.priceToFreeCashFlowsRatio},
+    ${item.priceToOperatingCashFlowsRatio},
+    ${item.priceCashFlowRatio},
+    ${item.priceEarningsToGrowthRatio},
+    ${item.priceSalesRatio},
+    ${item.dividendYield},
+    ${item.enterpriseValueMultiple},
+    ${item.priceFairValue}
+  )`;
+        });
+
+        console.log(values);
+
+        const query = `
+  INSERT INTO web_financial.financial_ratios (
+    symbol, date, calendar_year, period, current_ratio, quick_ratio, cash_ratio, days_of_sales_outstanding,
+  days_of_inventory_outstanding, operating_cycle, days_of_payables_outstanding, cash_conversion_cycle,
+  gross_profit_margin, operating_profit_margin, pretax_profit_margin, net_profit_margin, effective_tax_rate,
+  return_on_assets, return_on_equity, return_on_capital_employed, net_income_per_ebt, ebt_per_ebit, ebit_per_revenue, debt_ratio, debt_equity_ratio, long_term_debt_to_capitalization, total_debt_to_capitalization, interest_coverage, cash_flow_to_debt_ratio, company_equity_multiplier, receivables_turnover, payables_turnover, inventory_turnover, fixed_asset_turnover, asset_turnover, operating_cash_flow_per_share, free_cash_flow_per_share, cash_per_share, payout_ratio, operating_cash_flow_sales_ratio, free_cash_flow_operating_cash_flow_ratio, cash_flow_coverage_ratios,
+  short_term_coverage_ratios, capital_expenditure_coverage_ratio, dividend_paid_and_capex_coverage_ratio,
+  price_book_value_ratio, price_to_book_ratio, price_to_sales_ratio, price_earnings_ratio, price_to_free_cash_flows_ratio, price_to_operating_cash_flows_ratio, price_cash_flow_ratio, price_earnings_to_growth_ratio, price_sales_ratio, dividend_yield, enterprise_value_multiple, price_fair_value
+  )
+  VALUES
+    ${values.join(", ")}
+`;
+
+        await pool.query(query);
+
+        success++;
+      } catch (error) {
+        // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+        console.error(error);
+        failure++;
+        continue;
+      }
+
+      // Hacer una pausa de 4 segundos entre cada llamado a la API
+      count++;
+      if (count % 1500 === 0) {
+        console.log(
+          `Límite de llamados alcanzado. Haciendo una pausa de 1 minuto.`
+        );
+        await delay(60000); // Pausa de 1 minuto (60,000 ms)
+      } else {
+        await delay(4000); // Pausa de 4 segundos (4,000 ms)
+      }
+    }
+
+    console.log(`Llamados exitosos: ${success}, Llamados fallidos: ${failure}`);
+
+    return res.json({
+      success: true,
+      message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Ha ocurrido un error al obtener los estados de resultados",
+    });
+  }
+};
 //Alternativa buscando por ticker
 /*  let byTicker = await pool.query('SELECT * FROM web_financial.company_profile WHERE ticker = $1 ', [ticker]);
         if (byTicker.rows[0]) throw ({ code: 11000 }) */
