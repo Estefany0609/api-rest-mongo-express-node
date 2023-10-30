@@ -867,8 +867,6 @@ export const getCashFlow = async (req, res) => {
   )`;
         });
 
-        console.log(values);
-
         const query = `
   INSERT INTO web_financial.cash_flow_statement (
     date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period, net_income, depreciation_and_amortization, deferred_income_tax, stock_based_compensation, change_in_working_capital, accounts_receivables, inventory, accounts_payables, other_working_capital, other_non_cash_items, net_cash_provided_by_operating_activities, investments_in_property_plant_and_equipment, acquisitions_net, purchases_of_investments, sales_maturities_of_investments, other_investing_activities, net_cash_used_for_investing_activities, debt_repayment, common_stock_issued, common_stock_repurchased, dividends_paid, other_financing_activities, net_cash_used_provided_by_financing_activities, effect_of_forex_changes_on_cash, net_change_in_cash, cash_at_end_of_period, cash_at_beginning_of_period, operating_cash_flow, capital_expenditure, free_cash_flow, link, final_link
@@ -1019,8 +1017,6 @@ export const getKeyMetrics = async (req, res) => {
   )`;
         });
 
-        console.log(values);
-
         const query = `
   INSERT INTO web_financial.key_metrics (
     symbol, date, calendar_year, period, revenue_per_share, net_income_per_share, operating_cash_flow_per_share, free_cash_flow_per_share, cash_per_share, book_value_per_share, tangible_book_value_per_share, shareholders_equity_per_share, interest_debt_per_share, market_cap, enterprise_value, pe_ratio, price_to_sales_ratio, pocf_ratio, pfcf_ratio, pb_ratio, ptb_ratio, ev_to_sales, enterprise_value_over_ebitda, ev_to_operating_cash_flow, ev_to_free_cash_flow, earnings_yield, free_cash_flow_yield, debt_to_equity, debt_to_assets, net_debt_to_ebitda, current_ratio, interest_coverage, income_quality, dividend_yield, payout_ratio, sales_general_and_administrative_to_revenue, research_and_development_to_revenue, intangibles_to_total_assets, capex_to_operating_cash_flow, capex_to_revenue, capex_to_depreciation, stock_based_compensation_to_revenue, graham_number, roic, return_on_tangible_assets, graham_net_net, working_capital, tangible_asset_value, net_current_asset_value, invested_capital, average_receivables, average_payables, average_inventory, days_sales_outstanding, days_payables_outstanding, days_of_inventory_on_hand, receivables_turnover, payables_turnover, inventory_turnover, roe, capex_per_share
@@ -1165,8 +1161,6 @@ export const getRatios = async (req, res) => {
     ${item.priceFairValue}
   )`;
         });
-
-        console.log(values);
 
         const query = `
   INSERT INTO web_financial.financial_ratios (
