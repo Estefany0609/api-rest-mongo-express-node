@@ -574,7 +574,7 @@ export const newProfile = async (req, res) => {
   }
 };
 
-export const getIncomeStatement = async (req, res) => {
+export const getIncomeStatementO = async (req, res) => {
   try {
     const { symbols } = req.body;
     const { period } = req.params;
@@ -680,7 +680,7 @@ export const getIncomeStatement = async (req, res) => {
   }
 };
 
-export const getBalanceSheet = async (req, res) => {
+export const getBalanceSheeto = async (req, res) => {
   try {
     const { symbols } = req.body;
     const { period } = req.params;
@@ -783,7 +783,7 @@ export const getBalanceSheet = async (req, res) => {
   }
 };
 
-export const getCashFlow = async (req, res) => {
+export const getCashFlowO = async (req, res) => {
   try {
     const { symbols } = req.body;
     const { period } = req.params;
@@ -912,7 +912,7 @@ export const getCashFlow = async (req, res) => {
   }
 };
 
-export const getKeyMetrics = async (req, res) => {
+export const getKeyMetricso = async (req, res) => {
   try {
     const { symbols } = req.body;
     const { period } = req.params;
@@ -1062,7 +1062,7 @@ export const getKeyMetrics = async (req, res) => {
   }
 };
 
-export const getRatios = async (req, res) => {
+export const getRatioso = async (req, res) => {
   try {
     const { symbols } = req.body;
     const { period } = req.params;
@@ -1178,6 +1178,819 @@ export const getRatios = async (req, res) => {
         await pool.query(query);
 
         success++;
+      } catch (error) {
+        // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+        console.error(error);
+        failure++;
+        continue;
+      }
+
+      // Hacer una pausa de 4 segundos entre cada llamado a la API
+      count++;
+      if (count % 1500 === 0) {
+        console.log(
+          `Límite de llamados alcanzado. Haciendo una pausa de 1 minuto.`
+        );
+        await delay(60000); // Pausa de 1 minuto (60,000 ms)
+      } else {
+        await delay(4000); // Pausa de 4 segundos (4,000 ms)
+      }
+    }
+
+    console.log(`Llamados exitosos: ${success}, Llamados fallidos: ${failure}`);
+
+    return res.json({
+      success: true,
+      message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Ha ocurrido un error al obtener los estados de resultados",
+    });
+  }
+};
+
+export const getIncomeStatement = async (req, res) => {
+  try {
+    const { symbols } = req.body;
+    const { period } = req.params;
+
+    const endpointBase =
+      "https://financialmodelingprep.com/api/v3/income-statement/";
+
+    let count = 0;
+    let success = 0;
+    let failure = 0;
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
+
+    let periodFilter = "period != 'FY'";
+    if (period === "annual") {
+      periodFilter = "period = 'FY'";
+    }
+    // Obtener el último filling_date solo para los símbolos en tu lista
+    const lastFillingDates = await pool.query(
+      "SELECT symbol, MAX(filling_date) AS last_filling_date " +
+        "FROM web_financial.income_statement " +
+        `WHERE filling_date IS NOT NULL AND ${periodFilter} AND symbol IN ('${symbols.join(
+          "', '"
+        )}') ` +
+        "GROUP BY symbol"
+    );
+    for (let i = 0; i < symbols.length; i++) {
+      const symbol = symbols[i];
+      //const limit = period === "annual" ? 10 : period === "quarter" ? 45 : 10; // Cambiar límite según el período
+      const limit = 4; // Cambiar límite según el período
+      const endpoint = `${endpointBase}${symbol}?period=${period}&limit=${limit}&apikey=${api_key}`;
+
+      try {
+        // Realizar la solicitud HTTP a la API
+        const response = await fetch(endpoint);
+
+        if (!response.ok) {
+          // Si la respuesta no es exitosa, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const data = await response.json();
+
+        // Verificar si la respuesta es un array vacío o si contiene datos
+        if (!Array.isArray(data) || data.length === 0) {
+          // Si la respuesta es un array vacío, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const lastFillingDateForSymbol =
+          lastFillingDates.rows.find((row) => row.symbol === symbol) || {};
+        const lastFillingDate = lastFillingDateForSymbol.last_filling_date;
+
+        const values = data
+          .filter((item) => {
+            if (!lastFillingDate) {
+              return true; // Si lastFillingDate es nulo, incluir todos los datos
+            }
+
+            // Convertir lastFillingDate a formato 'AAAA-MM-DD'
+            const formattedLastFillingDate = lastFillingDate
+              .toISOString()
+              .split("T")[0];
+
+            // Comparar las fechas
+            return item.fillingDate > formattedLastFillingDate;
+          })
+          .map((item) => {
+            return `(
+      '${item.date}', '${item.symbol}', '${item.reportedCurrency}', '${item.cik}',
+      '${item.fillingDate}', '${item.acceptedDate}', '${item.calendarYear}', '${item.period}',
+      ${item.revenue}, ${item.costOfRevenue}, ${item.grossProfit}, ${item.grossProfitRatio},
+      ${item.researchAndDevelopmentExpenses}, ${item.generalAndAdministrativeExpenses},
+      ${item.sellingAndMarketingExpenses}, ${item.sellingGeneralAndAdministrativeExpenses},
+      ${item.otherExpenses}, ${item.operatingExpenses}, ${item.costAndExpenses},
+      ${item.interestIncome}, ${item.interestExpense}, ${item.depreciationAndAmortization},
+      ${item.ebitda}, ${item.ebitdaratio}, ${item.operatingIncome}, ${item.operatingIncomeRatio},
+      ${item.totalOtherIncomeExpensesNet}, ${item.incomeBeforeTax}, ${item.incomeBeforeTaxRatio},
+      ${item.incomeTaxExpense}, ${item.netIncome}, ${item.netIncomeRatio}, ${item.eps}, ${item.epsdiluted},
+      ${item.weightedAverageShsOut}, ${item.weightedAverageShsOutDil}, '${item.link}', '${item.finalLink}'
+    )`;
+          });
+
+        if (values.length > 0) {
+          const query = `
+            INSERT INTO web_financial.income_statement (
+              date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period,
+              revenue, cost_of_revenue, gross_profit, gross_profit_ratio,
+              research_and_development_expenses, general_and_administrative_expenses,
+              selling_and_marketing_expenses, selling_general_and_administrative_expenses, other_expenses,
+              operating_expenses, cost_and_expenses, interest_income, interest_expense, depreciation_and_amortization, ebitda, ebitda_ratio,
+              operating_income, operating_income_ratio, total_other_income_expenses_net, income_before_tax, income_before_tax_ratio, income_tax_expense,
+              net_income, net_income_ratio, eps, eps_diluted, weighted_average_shs_out, weighted_average_shs_out_dil, link, final_link
+            )
+            
+            VALUES
+              ${values.join(", ")}
+          `;
+
+          await pool.query(query);
+
+          success++;
+        }
+      } catch (error) {
+        // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+        console.error(error);
+        failure++;
+        continue;
+      }
+
+      // Hacer una pausa de 4 segundos entre cada llamado a la API
+      count++;
+      if (count % 1500 === 0) {
+        console.log(
+          `Límite de llamados alcanzado. Haciendo una pausa de 1 minuto.`
+        );
+        await delay(60000); // Pausa de 1 minuto (60,000 ms)
+      } else {
+        await delay(4000); // Pausa de 4 segundos (4,000 ms)
+      }
+    }
+
+    console.log(`Llamados exitosos: ${success}, Llamados fallidos: ${failure}`);
+
+    return res.json({
+      success: true,
+      message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Ha ocurrido un error al obtener los estados de resultados",
+    });
+  }
+};
+
+export const getBalanceSheet = async (req, res) => {
+  try {
+    const { symbols } = req.body;
+    const { period } = req.params;
+
+    const endpointBase =
+      "https://financialmodelingprep.com/api/v3/balance-sheet-statement/";
+
+    let count = 0;
+    let success = 0;
+    let failure = 0;
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
+
+    let periodFilter = "period != 'FY'";
+    if (period === "annual") {
+      periodFilter = "period = 'FY'";
+    }
+
+    // Obtener el último filling_date solo para los símbolos en tu lista
+    const lastFillingDates = await pool.query(
+      "SELECT symbol, MAX(filling_date) AS last_filling_date " +
+        "FROM web_financial.balance_sheet " +
+        `WHERE filling_date IS NOT NULL AND ${periodFilter} AND symbol IN ('${symbols.join(
+          "', '"
+        )}') ` +
+        "GROUP BY symbol"
+    );
+
+    for (let i = 0; i < symbols.length; i++) {
+      const symbol = symbols[i];
+      const limit = 4;
+
+      const endpoint = `${endpointBase}${symbol}?period=${period}&limit=${limit}&apikey=${api_key}`;
+
+      try {
+        // Realizar la solicitud HTTP a la API
+        const response = await fetch(endpoint);
+
+        if (!response.ok) {
+          // Si la respuesta no es exitosa, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const data = await response.json();
+
+        // Verificar si la respuesta es un array vacío o si contiene datos
+        if (!Array.isArray(data) || data.length === 0) {
+          // Si la respuesta es un array vacío, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const lastFillingDateForSymbol =
+          lastFillingDates.rows.find((row) => row.symbol === symbol) || {};
+        const lastFillingDate = lastFillingDateForSymbol.last_filling_date;
+
+        const values = data
+          .filter((item) => {
+            if (!lastFillingDate) {
+              return true; // Si lastFillingDate es nulo, incluir todos los datos
+            }
+
+            // Convertir lastFillingDate a formato 'AAAA-MM-DD'
+            const formattedLastFillingDate = lastFillingDate
+              .toISOString()
+              .split("T")[0];
+
+            // Comparar las fechas
+            return item.fillingDate > formattedLastFillingDate;
+          })
+          .map((item) => {
+            return `(
+    '${item.date}', '${item.symbol}', '${item.reportedCurrency}', '${item.cik}',
+    '${item.fillingDate}', '${item.acceptedDate}', '${item.calendarYear}', '${item.period}',
+    ${item.cashAndCashEquivalents}, ${item.shortTermInvestments}, ${item.cashAndShortTermInvestments},
+    ${item.netReceivables}, ${item.inventory}, ${item.otherCurrentAssets}, ${item.totalCurrentAssets},
+    ${item.propertyPlantEquipmentNet}, ${item.goodwill}, ${item.intangibleAssets}, ${item.goodwillAndIntangibleAssets},
+    ${item.longTermInvestments}, ${item.taxAssets}, ${item.otherNonCurrentAssets}, ${item.totalNonCurrentAssets},
+    ${item.otherAssets}, ${item.totalAssets}, ${item.accountPayables}, ${item.shortTermDebt}, ${item.taxPayables},
+    ${item.deferredRevenue}, ${item.otherCurrentLiabilities}, ${item.totalCurrentLiabilities}, ${item.longTermDebt},
+    ${item.deferredRevenueNonCurrent}, ${item.deferredTaxLiabilitiesNonCurrent}, ${item.otherNonCurrentLiabilities},
+    ${item.totalNonCurrentLiabilities}, ${item.otherLiabilities}, ${item.capitalLeaseObligations}, ${item.totalLiabilities},
+    ${item.preferredStock}, ${item.commonStock}, ${item.retainedEarnings}, ${item.accumulatedOtherComprehensiveIncomeLoss},
+    ${item.othertotalStockholdersEquity}, ${item.totalStockholdersEquity}, ${item.totalEquity}, ${item.totalLiabilitiesAndStockholdersEquity},
+    ${item.minorityInterest}, ${item.totalLiabilitiesAndTotalEquity}, ${item.totalInvestments}, ${item.totalDebt},
+    ${item.netDebt}, '${item.link}', '${item.finalLink}'
+  )`;
+          });
+
+        if (values.length > 0) {
+          const query = `
+  INSERT INTO web_financial.balance_sheet(
+    date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period, cash_and_cash_equivalents, short_term_investments, cash_and_short_term_investments, net_receivables, inventory, other_current_assets, total_current_assets, property_plant_equipment_net, goodwill, intangible_assets, goodwill_and_intangible_assets, long_term_investments, tax_assets, other_non_current_assets, total_non_current_assets, other_assets, total_assets, account_payables, short_term_debt, tax_payables, deferred_revenue, other_current_liabilities, total_current_liabilities, long_term_debt, deferred_revenue_non_current, deferred_tax_liabilities_non_current, other_non_current_liabilities, total_non_current_liabilities, other_liabilities, capital_lease_obligations, total_liabilities, preferred_stock, common_stock, retained_earnings, accumulated_other_comprehensive_income_loss, other_total_stockholders_equity, total_stockholders_equity, total_equity, total_liabilities_and_stockholders_equity, minority_interest, total_liabilities_and_total_equity, total_investments, total_debt, net_debt, link, final_link
+  )
+  VALUES
+    ${values.join(", ")}
+`;
+
+          await pool.query(query);
+
+          success++;
+        }
+      } catch (error) {
+        // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+        console.error(error);
+        failure++;
+        continue;
+      }
+
+      // Hacer una pausa de 4 segundos entre cada llamado a la API
+      count++;
+      if (count % 1500 === 0) {
+        console.log(
+          `Límite de llamados alcanzado. Haciendo una pausa de 1 minuto.`
+        );
+        await delay(60000); // Pausa de 1 minuto (60,000 ms)
+      } else {
+        await delay(4000); // Pausa de 4 segundos (4,000 ms)
+      }
+    }
+
+    console.log(`Llamados exitosos: ${success}, Llamados fallidos: ${failure}`);
+
+    return res.json({
+      success: true,
+      message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Ha ocurrido un error al obtener los estados de resultados",
+    });
+  }
+};
+
+export const getCashFlow = async (req, res) => {
+  try {
+    const { symbols } = req.body;
+    const { period } = req.params;
+
+    const endpointBase =
+      "https://financialmodelingprep.com/api/v3/cash-flow-statement/";
+
+    let count = 0;
+    let success = 0;
+    let failure = 0;
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
+
+    let periodFilter = "period != 'FY'";
+    if (period === "annual") {
+      periodFilter = "period = 'FY'";
+    }
+    // Obtener el último filling_date solo para los símbolos en tu lista
+    const lastFillingDates = await pool.query(
+      "SELECT symbol, MAX(filling_date) AS last_filling_date " +
+        "FROM web_financial.cash_flow_statement " +
+        `WHERE filling_date IS NOT NULL AND ${periodFilter} AND symbol IN ('${symbols.join(
+          "', '"
+        )}') ` +
+        "GROUP BY symbol"
+    );
+
+    for (let i = 0; i < symbols.length; i++) {
+      const symbol = symbols[i];
+      const limit = 4; // Cambiar límite según el período
+
+      const endpoint = `${endpointBase}${symbol}?period=${period}&limit=${limit}&apikey=${api_key}`;
+
+      try {
+        // Realizar la solicitud HTTP a la API
+        const response = await fetch(endpoint);
+
+        if (!response.ok) {
+          // Si la respuesta no es exitosa, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const data = await response.json();
+
+        // Verificar si la respuesta es un array vacío o si contiene datos
+        if (!Array.isArray(data) || data.length === 0) {
+          // Si la respuesta es un array vacío, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const lastFillingDateForSymbol =
+          lastFillingDates.rows.find((row) => row.symbol === symbol) || {};
+        const lastFillingDate = lastFillingDateForSymbol.last_filling_date;
+
+        const values = data
+          .filter((item) => {
+            if (!lastFillingDate) {
+              return true; // Si lastFillingDate es nulo, incluir todos los datos
+            }
+
+            // Convertir lastFillingDate a formato 'AAAA-MM-DD'
+            const formattedLastFillingDate = lastFillingDate
+              .toISOString()
+              .split("T")[0];
+
+            // Comparar las fechas
+            return item.fillingDate > formattedLastFillingDate;
+          })
+          .map((item) => {
+            return `(
+    '${item.date}', 
+    '${item.symbol}', 
+    '${item.reportedCurrency}', 
+    '${item.cik}',
+    '${item.fillingDate}', 
+    '${item.acceptedDate}', 
+    '${item.calendarYear}', 
+    '${item.period}',
+    ${item.netIncome}, 
+    ${item.depreciationAndAmortization}, 
+    ${item.deferredIncomeTax}, 
+    ${item.stockBasedCompensation}, 
+    ${item.changeInWorkingCapital}, 
+    ${item.accountsReceivables}, 
+    ${item.inventory}, 
+    ${item.accountsPayables}, 
+    ${item.otherWorkingCapital}, 
+    ${item.otherNonCashItems}, 
+    ${item.netCashProvidedByOperatingActivities}, 
+    ${item.investmentsInPropertyPlantAndEquipment}, 
+    ${item.acquisitionsNet}, 
+    ${item.purchasesOfInvestments}, 
+    ${item.salesMaturitiesOfInvestments}, 
+    ${item.otherInvestingActivites}, 
+    ${item.netCashUsedForInvestingActivites}, 
+    ${item.debtRepayment}, 
+    ${item.commonStockIssued}, 
+    ${item.commonStockRepurchased}, 
+    ${item.dividendsPaid}, 
+    ${item.otherFinancingActivites}, 
+    ${item.netCashUsedProvidedByFinancingActivities}, 
+    ${item.effectOfForexChangesOnCash}, 
+    ${item.netChangeInCash}, 
+    ${item.cashAtEndOfPeriod}, 
+    ${item.cashAtBeginningOfPeriod}, 
+    ${item.operatingCashFlow}, 
+    ${item.capitalExpenditure}, 
+    ${item.freeCashFlow}, 
+    '${item.link}', 
+    '${item.finalLink}'
+  )`;
+          });
+
+        if (values.length > 0) {
+          const query = `
+  INSERT INTO web_financial.cash_flow_statement (
+    date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period, net_income, depreciation_and_amortization, deferred_income_tax, stock_based_compensation, change_in_working_capital, accounts_receivables, inventory, accounts_payables, other_working_capital, other_non_cash_items, net_cash_provided_by_operating_activities, investments_in_property_plant_and_equipment, acquisitions_net, purchases_of_investments, sales_maturities_of_investments, other_investing_activities, net_cash_used_for_investing_activities, debt_repayment, common_stock_issued, common_stock_repurchased, dividends_paid, other_financing_activities, net_cash_used_provided_by_financing_activities, effect_of_forex_changes_on_cash, net_change_in_cash, cash_at_end_of_period, cash_at_beginning_of_period, operating_cash_flow, capital_expenditure, free_cash_flow, link, final_link
+  )
+  VALUES
+    ${values.join(", ")}
+`;
+
+          await pool.query(query);
+
+          success++;
+        }
+      } catch (error) {
+        // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+        console.error(error);
+        failure++;
+        continue;
+      }
+
+      // Hacer una pausa de 4 segundos entre cada llamado a la API
+      count++;
+      if (count % 1500 === 0) {
+        console.log(
+          `Límite de llamados alcanzado. Haciendo una pausa de 1 minuto.`
+        );
+        await delay(60000); // Pausa de 1 minuto (60,000 ms)
+      } else {
+        await delay(4000); // Pausa de 4 segundos (4,000 ms)
+      }
+    }
+
+    console.log(`Llamados exitosos: ${success}, Llamados fallidos: ${failure}`);
+
+    return res.json({
+      success: true,
+      message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Ha ocurrido un error al obtener los estados de resultados",
+    });
+  }
+};
+
+export const getKeyMetrics = async (req, res) => {
+  try {
+    const { symbols } = req.body;
+    const { period } = req.params;
+
+    const endpointBase =
+      "https://financialmodelingprep.com/api/v3/key-metrics/";
+
+    let count = 0;
+    let success = 0;
+    let failure = 0;
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
+
+    let periodFilter = "period != 'FY'";
+    if (period === "annual") {
+      periodFilter = "period = 'FY'";
+    }
+
+    // Obtener el último filling_date solo para los símbolos en tu lista
+    const lastFillingDates = await pool.query(
+      "SELECT symbol, MAX(date) AS last_filling_date " +
+        "FROM web_financial.key_metrics " +
+        `WHERE date IS NOT NULL AND ${periodFilter} AND symbol IN ('${symbols.join(
+          "', '"
+        )}') ` +
+        "GROUP BY symbol"
+    );
+
+    for (let i = 0; i < symbols.length; i++) {
+      const symbol = symbols[i];
+      const limit = 4; // Cambiar límite según el período
+
+      const endpoint = `${endpointBase}${symbol}?period=${period}&limit=${limit}&apikey=${api_key}`;
+
+      try {
+        // Realizar la solicitud HTTP a la API
+        const response = await fetch(endpoint);
+
+        if (!response.ok) {
+          // Si la respuesta no es exitosa, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const data = await response.json();
+
+        // Verificar si la respuesta es un array vacío o si contiene datos
+        if (!Array.isArray(data) || data.length === 0) {
+          // Si la respuesta es un array vacío, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const lastFillingDateForSymbol =
+          lastFillingDates.rows.find((row) => row.symbol === symbol) || {};
+        const lastFillingDate = lastFillingDateForSymbol.date;
+
+        console.log(lastFillingDate);
+
+        const values = data
+          .filter((item) => {
+            if (!lastFillingDate) {
+              return true; // Si lastFillingDate es nulo, incluir todos los datos
+            }
+
+            // Convertir lastFillingDate a formato 'AAAA-MM-DD'
+            const formattedLastFillingDate = lastFillingDate
+              .toISOString()
+              .split("T")[0];
+
+            // Comparar las fechas
+            return item.date > formattedLastFillingDate;
+          })
+          .map((item) => {
+            return `(
+    '${item.symbol}', 
+    '${item.date}', 
+    '${item.calendarYear}', 
+    '${item.period}', 
+    ${item.revenuePerShare}, 
+    ${item.netIncomePerShare}, 
+    ${item.operatingCashFlowPerShare}, 
+    ${item.freeCashFlowPerShare}, 
+    ${item.cashPerShare}, 
+    ${item.bookValuePerShare}, 
+    ${item.tangibleBookValuePerShare}, 
+    ${item.shareholdersEquityPerShare}, 
+    ${item.interestDebtPerShare}, 
+    ${item.marketCap}, 
+    ${item.enterpriseValue}, 
+    ${item.peRatio}, 
+    ${item.priceToSalesRatio}, 
+    ${item.pocfratio}, 
+    ${item.pfcfRatio}, 
+    ${item.pbRatio}, 
+    ${item.ptbRatio}, 
+    ${item.evToSales}, 
+    ${item.enterpriseValueOverEBITDA}, 
+    ${item.evToOperatingCashFlow}, 
+    ${item.evToFreeCashFlow}, 
+    ${item.earningsYield}, 
+    ${item.freeCashFlowYield}, 
+    ${item.debtToEquity}, 
+    ${item.debtToAssets}, 
+    ${item.netDebtToEBITDA}, 
+    ${item.currentRatio}, 
+    ${item.interestCoverage}, 
+    '${item.incomeQuality}', 
+    ${item.dividendYield}, 
+    ${item.payoutRatio}, 
+    ${item.salesGeneralAndAdministrativeToRevenue}, 
+    ${item.researchAndDdevelopementToRevenue}, 
+    ${item.intangiblesToTotalAssets}, 
+    ${item.capexToOperatingCashFlow}, 
+    ${item.capexToRevenue}, 
+    ${item.capexToDepreciation}, 
+    ${item.stockBasedCompensationToRevenue}, 
+    ${item.grahamNumber}, 
+    ${item.roic}, 
+    ${item.returnOnTangibleAssets}, 
+    ${item.grahamNetNet}, 
+    ${item.workingCapital}, 
+    ${item.tangibleAssetValue}, 
+    ${item.netCurrentAssetValue}, 
+    ${item.investedCapital}, 
+    ${item.averageReceivables}, 
+    ${item.averagePayables}, 
+    ${item.averageInventory}, 
+    ${item.daysSalesOutstanding}, 
+    ${item.daysPayablesOutstanding}, 
+    ${item.daysOfInventoryOnHand}, 
+    ${item.receivablesTurnover}, 
+    ${item.payablesTurnover}, 
+    ${item.inventoryTurnover}, 
+    ${item.roe}, 
+    ${item.capexPerShare}
+  )`;
+          });
+
+        if (values.length > 0) {
+          const query = `
+  INSERT INTO web_financial.key_metrics (
+    symbol, date, calendar_year, period, revenue_per_share, net_income_per_share, operating_cash_flow_per_share, free_cash_flow_per_share, cash_per_share, book_value_per_share, tangible_book_value_per_share, shareholders_equity_per_share, interest_debt_per_share, market_cap, enterprise_value, pe_ratio, price_to_sales_ratio, pocf_ratio, pfcf_ratio, pb_ratio, ptb_ratio, ev_to_sales, enterprise_value_over_ebitda, ev_to_operating_cash_flow, ev_to_free_cash_flow, earnings_yield, free_cash_flow_yield, debt_to_equity, debt_to_assets, net_debt_to_ebitda, current_ratio, interest_coverage, income_quality, dividend_yield, payout_ratio, sales_general_and_administrative_to_revenue, research_and_development_to_revenue, intangibles_to_total_assets, capex_to_operating_cash_flow, capex_to_revenue, capex_to_depreciation, stock_based_compensation_to_revenue, graham_number, roic, return_on_tangible_assets, graham_net_net, working_capital, tangible_asset_value, net_current_asset_value, invested_capital, average_receivables, average_payables, average_inventory, days_sales_outstanding, days_payables_outstanding, days_of_inventory_on_hand, receivables_turnover, payables_turnover, inventory_turnover, roe, capex_per_share
+  )
+  VALUES
+    ${values.join(", ")}
+`;
+
+          await pool.query(query);
+
+          success++;
+        }
+      } catch (error) {
+        // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+        console.error(error);
+        failure++;
+        continue;
+      }
+
+      // Hacer una pausa de 4 segundos entre cada llamado a la API
+      count++;
+      if (count % 1500 === 0) {
+        console.log(
+          `Límite de llamados alcanzado. Haciendo una pausa de 1 minuto.`
+        );
+        await delay(60000); // Pausa de 1 minuto (60,000 ms)
+      } else {
+        await delay(4000); // Pausa de 4 segundos (4,000 ms)
+      }
+    }
+
+    console.log(`Llamados exitosos: ${success}, Llamados fallidos: ${failure}`);
+
+    return res.json({
+      success: true,
+      message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Ha ocurrido un error al obtener los estados de resultados",
+    });
+  }
+};
+
+export const getRatios = async (req, res) => {
+  try {
+    const { symbols } = req.body;
+    const { period } = req.params;
+
+    const endpointBase = "https://financialmodelingprep.com/api/v3/ratios/";
+
+    let count = 0;
+    let success = 0;
+    let failure = 0;
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
+
+    let periodFilter = "period != 'FY'";
+    if (period === "annual") {
+      periodFilter = "period = 'FY'";
+    }
+
+    // Obtener el último filling_date solo para los símbolos en tu lista
+    const lastFillingDates = await pool.query(
+      "SELECT symbol, MAX(date) AS last_filling_date " +
+        "FROM web_financial.financial_ratios " +
+        `WHERE date IS NOT NULL AND ${periodFilter} AND symbol IN ('${symbols.join(
+          "', '"
+        )}') ` +
+        "GROUP BY symbol"
+    );
+
+    for (let i = 0; i < symbols.length; i++) {
+      const symbol = symbols[i];
+      const limit = 4; // Cambiar límite según el período
+
+      const endpoint = `${endpointBase}${symbol}?period=${period}&limit=${limit}&apikey=${api_key}`;
+
+      try {
+        // Realizar la solicitud HTTP a la API
+        const response = await fetch(endpoint);
+
+        if (!response.ok) {
+          // Si la respuesta no es exitosa, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const data = await response.json();
+
+        // Verificar si la respuesta es un array vacío o si contiene datos
+        if (!Array.isArray(data) || data.length === 0) {
+          // Si la respuesta es un array vacío, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const lastFillingDateForSymbol =
+          lastFillingDates.rows.find((row) => row.symbol === symbol) || {};
+        const lastFillingDate = lastFillingDateForSymbol.date;
+
+        const values = data
+          .filter((item) => {
+            if (!lastFillingDate) {
+              return true; // Si lastFillingDate es nulo, incluir todos los datos
+            }
+
+            // Convertir lastFillingDate a formato 'AAAA-MM-DD'
+            const formattedLastFillingDate = lastFillingDate
+              .toISOString()
+              .split("T")[0];
+
+            // Comparar las fechas
+            return item.date > formattedLastFillingDate;
+          })
+          .map((item) => {
+            return `(
+    '${item.symbol}',
+    '${item.date}',
+    '${item.calendarYear}',
+    '${item.period}',
+    ${item.currentRatio},
+    ${item.quickRatio},
+    ${item.cashRatio},
+    ${item.daysOfSalesOutstanding},
+    ${item.daysOfInventoryOutstanding},
+    ${item.operatingCycle},
+    ${item.daysOfPayablesOutstanding},
+    ${item.cashConversionCycle},
+    ${item.grossProfitMargin},
+    ${item.operatingProfitMargin},
+    ${item.pretaxProfitMargin},
+    ${item.netProfitMargin},
+    ${item.effectiveTaxRate},
+    ${item.returnOnAssets},
+    ${item.returnOnEquity},
+    ${item.returnOnCapitalEmployed},
+    ${item.netIncomePerEBT},
+    ${item.ebtPerEbit},
+    ${item.ebitPerRevenue},
+    ${item.debtRatio},
+    ${item.debtEquityRatio},
+    ${item.longTermDebtToCapitalization},
+    ${item.totalDebtToCapitalization},
+    ${item.interestCoverage},
+    ${item.cashFlowToDebtRatio},
+    ${item.companyEquityMultiplier},
+    ${item.receivablesTurnover},
+    ${item.payablesTurnover},
+    ${item.inventoryTurnover},
+    ${item.fixedAssetTurnover},
+    ${item.assetTurnover},
+    ${item.operatingCashFlowPerShare},
+    ${item.freeCashFlowPerShare},
+    ${item.cashPerShare},
+    ${item.payoutRatio},
+    ${item.operatingCashFlowSalesRatio},
+    ${item.freeCashFlowOperatingCashFlowRatio},
+    ${item.cashFlowCoverageRatios},
+    ${item.shortTermCoverageRatios},
+    ${item.capitalExpenditureCoverageRatio},
+    ${item.dividendPaidAndCapexCoverageRatio},
+    ${item.priceBookValueRatio},
+    ${item.priceToBookRatio},
+    ${item.priceToSalesRatio},
+    ${item.priceEarningsRatio},
+    ${item.priceToFreeCashFlowsRatio},
+    ${item.priceToOperatingCashFlowsRatio},
+    ${item.priceCashFlowRatio},
+    ${item.priceEarningsToGrowthRatio},
+    ${item.priceSalesRatio},
+    ${item.dividendYield},
+    ${item.enterpriseValueMultiple},
+    ${item.priceFairValue}
+  )`;
+          });
+
+        if (values.length > 0) {
+          const query = `
+  INSERT INTO web_financial.financial_ratios (
+    symbol, date, calendar_year, period, current_ratio, quick_ratio, cash_ratio, days_of_sales_outstanding,
+  days_of_inventory_outstanding, operating_cycle, days_of_payables_outstanding, cash_conversion_cycle,
+  gross_profit_margin, operating_profit_margin, pretax_profit_margin, net_profit_margin, effective_tax_rate,
+  return_on_assets, return_on_equity, return_on_capital_employed, net_income_per_ebt, ebt_per_ebit, ebit_per_revenue, debt_ratio, debt_equity_ratio, long_term_debt_to_capitalization, total_debt_to_capitalization, interest_coverage, cash_flow_to_debt_ratio, company_equity_multiplier, receivables_turnover, payables_turnover, inventory_turnover, fixed_asset_turnover, asset_turnover, operating_cash_flow_per_share, free_cash_flow_per_share, cash_per_share, payout_ratio, operating_cash_flow_sales_ratio, free_cash_flow_operating_cash_flow_ratio, cash_flow_coverage_ratios,
+  short_term_coverage_ratios, capital_expenditure_coverage_ratio, dividend_paid_and_capex_coverage_ratio,
+  price_book_value_ratio, price_to_book_ratio, price_to_sales_ratio, price_earnings_ratio, price_to_free_cash_flows_ratio, price_to_operating_cash_flows_ratio, price_cash_flow_ratio, price_earnings_to_growth_ratio, price_sales_ratio, dividend_yield, enterprise_value_multiple, price_fair_value
+  )
+  VALUES
+    ${values.join(", ")}
+`;
+
+          await pool.query(query);
+
+          success++;
+        }
       } catch (error) {
         // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
         console.error(error);
