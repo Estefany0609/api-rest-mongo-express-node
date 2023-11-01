@@ -1740,8 +1740,9 @@ export const getKeyMetrics = async (req, res) => {
 
     for (let i = 0; i < symbols.length; i++) {
       const symbol = symbols[i];
-      //const limit = 4; // Cambiar límite según el período
-      const limit = period === "annual" ? 10 : period === "quarter" ? 45 : 10; // Cambiar límite según el período
+      const limit = 4; // Cambiar límite según el período
+      //const limit = period === "annual" ? 10 : period === "quarter" ? 45 : 10; // Cambiar límite según el período
+
       const endpoint = `${endpointBase}${symbol}?period=${period}&limit=${limit}&apikey=${api_key}`;
 
       try {
@@ -1936,8 +1937,8 @@ export const getRatios = async (req, res) => {
 
     for (let i = 0; i < symbols.length; i++) {
       const symbol = symbols[i];
-      //const limit = 4; // Cambiar límite según el período
-      const limit = period === "annual" ? 10 : period === "quarter" ? 45 : 10; // Cambiar límite según el período
+      const limit = 4; // Cambiar límite según el período
+      //const limit = period === "annual" ? 10 : period === "quarter" ? 45 : 10; // Cambiar límite según el período
       const endpoint = `${endpointBase}${symbol}?period=${period}&limit=${limit}&apikey=${api_key}`;
 
       try {
@@ -2120,13 +2121,9 @@ AND i.symbol IS NULL;
     const tickersWithQ4 = tickers.filter((ticker) => ticker.quarter === "Q4");
 
     // Extraer solo los tickers de los resultados en tickersWithQ4
-    /*     const tickersArray = tickers.map((tickerObj) => tickerObj.ticker);
+    const tickersArray = tickers.map((tickerObj) => tickerObj.ticker);
 
-    const tickersArrayQ4 = tickersWithQ4.map((tickerObj) => tickerObj.ticker); */
-
-    const tickersArray = ["A"];
-
-    const tickersArrayQ4 = [];
+    const tickersArrayQ4 = tickersWithQ4.map((tickerObj) => tickerObj.ticker);
 
     // Función para llamar a getIncomeStatement en lotes
     const callStatementInBatches = async (symbols, period) => {
@@ -2146,9 +2143,9 @@ AND i.symbol IS NULL;
       // Iterar sobre los lotes y llamar a getIncomeStatement con cada lote
       for (let i = 0; i < batches.length; i++) {
         console.log(`Procesando batch ${i + 1}`);
-        await getIncomeStatement({ symbols: batches[i], period }, res);
-        await getBalanceSheet({ symbols: batches[i], period }, res);
-        await getCashFlow({ symbols: batches[i], period }, res);
+        //await getIncomeStatement({ symbols: batches[i], period }, res);
+        //await getBalanceSheet({ symbols: batches[i], period }, res);
+        //await getCashFlow({ symbols: batches[i], period }, res);
         await getKeyMetrics({ symbols: batches[i], period }, res);
         await getRatios({ symbols: batches[i], period }, res);
       }
