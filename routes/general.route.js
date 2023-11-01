@@ -15,6 +15,7 @@ import {
   getCashFlow,
   getKeyMetrics,
   getRatios,
+  getAndCallStatements,
 } from "../controllers/historical.controller.js";
 import { requireToken } from "../middlewares/requireToken.js";
 const router = Router();
@@ -27,6 +28,7 @@ router.post("/industrias", requireToken, getIndustrias);
 router.post("/subIndustrias", requireToken, getSubIndustrias);
 
 router.post("/profile", newProfile);
+router.post("/AllStatement", getAndCallStatements);
 router.post("/IncomeStatement/:period", getIncomeStatement);
 router.post("/BalanceSheet/:period", getBalanceSheet);
 router.post("/CashFLow/:period", getCashFlow);

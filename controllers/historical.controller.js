@@ -1214,8 +1214,19 @@ export const getRatioso = async (req, res) => {
 
 export const getIncomeStatement = async (req, res) => {
   try {
-    const { symbols } = req.body;
-    const { period } = req.params;
+    console.log("llamando income");
+
+    let symbols, period;
+
+    if (req.symbols) {
+      // Si req.symbols tiene información, toma los valores de ahí
+      symbols = req.symbols;
+      period = req.period;
+    } else {
+      // De lo contrario, toma los valores de req.body y req.params
+      symbols = req.body.symbols;
+      period = req.params.period;
+    }
 
     const endpointBase =
       "https://financialmodelingprep.com/api/v3/income-statement/";
@@ -1230,6 +1241,7 @@ export const getIncomeStatement = async (req, res) => {
     if (period === "annual") {
       periodFilter = "period = 'FY'";
     }
+
     // Obtener el último filling_date solo para los símbolos en tu lista
     const lastFillingDates = await pool.query(
       "SELECT symbol, MAX(filling_date) AS last_filling_date " +
@@ -1239,6 +1251,7 @@ export const getIncomeStatement = async (req, res) => {
         )}') ` +
         "GROUP BY symbol"
     );
+
     for (let i = 0; i < symbols.length; i++) {
       const symbol = symbols[i];
       //const limit = period === "annual" ? 10 : period === "quarter" ? 45 : 10; // Cambiar límite según el período
@@ -1339,23 +1352,39 @@ export const getIncomeStatement = async (req, res) => {
 
     console.log(`Llamados exitosos: ${success}, Llamados fallidos: ${failure}`);
 
-    return res.json({
+    /* return res.json({
       success: true,
       message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
     });
+ */
+    // Retorna un mensaje de finalización
+    return "Procesamiento completado";
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
+    /* return res.status(500).json({
       success: false,
       message: "Ha ocurrido un error al obtener los estados de resultados",
-    });
+    }); */
+
+    // Retorna un mensaje de finalización en caso de error
+    return "Procesamiento con error";
   }
 };
 
 export const getBalanceSheet = async (req, res) => {
   try {
-    const { symbols } = req.body;
-    const { period } = req.params;
+    console.log("llamando balance");
+    let symbols, period;
+
+    if (req.symbols) {
+      // Si req.symbols tiene información, toma los valores de ahí
+      symbols = req.symbols;
+      period = req.period;
+    } else {
+      // De lo contrario, toma los valores de req.body y req.params
+      symbols = req.body.symbols;
+      period = req.params.period;
+    }
 
     const endpointBase =
       "https://financialmodelingprep.com/api/v3/balance-sheet-statement/";
@@ -1477,23 +1506,37 @@ export const getBalanceSheet = async (req, res) => {
 
     console.log(`Llamados exitosos: ${success}, Llamados fallidos: ${failure}`);
 
-    return res.json({
+    /* return res.json({
       success: true,
       message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
-    });
+    }); */
+    // Retorna un mensaje de finalización
+    return "Procesamiento completado";
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
+    /* return res.status(500).json({
       success: false,
       message: "Ha ocurrido un error al obtener los estados de resultados",
-    });
+    }); */
+
+    return "Procesamiento con error";
   }
 };
 
 export const getCashFlow = async (req, res) => {
   try {
-    const { symbols } = req.body;
-    const { period } = req.params;
+    let symbols, period;
+    console.log("llamando cash");
+
+    if (req.symbols) {
+      // Si req.symbols tiene información, toma los valores de ahí
+      symbols = req.symbols;
+      period = req.period;
+    } else {
+      // De lo contrario, toma los valores de req.body y req.params
+      symbols = req.body.symbols;
+      period = req.params.period;
+    }
 
     const endpointBase =
       "https://financialmodelingprep.com/api/v3/cash-flow-statement/";
@@ -1640,23 +1683,36 @@ export const getCashFlow = async (req, res) => {
 
     console.log(`Llamados exitosos: ${success}, Llamados fallidos: ${failure}`);
 
-    return res.json({
+    /* return res.json({
       success: true,
       message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
-    });
+    }); */
+    // Retorna un mensaje de finalización
+    return "Procesamiento completado";
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
+    /* return res.status(500).json({
       success: false,
       message: "Ha ocurrido un error al obtener los estados de resultados",
-    });
+    }); */
+    return "Procesamiento con error";
   }
 };
 
 export const getKeyMetrics = async (req, res) => {
   try {
-    const { symbols } = req.body;
-    const { period } = req.params;
+    console.log("llamando metricas");
+    let symbols, period;
+
+    if (req.symbols) {
+      // Si req.symbols tiene información, toma los valores de ahí
+      symbols = req.symbols;
+      period = req.period;
+    } else {
+      // De lo contrario, toma los valores de req.body y req.params
+      symbols = req.body.symbols;
+      period = req.params.period;
+    }
 
     const endpointBase =
       "https://financialmodelingprep.com/api/v3/key-metrics/";
@@ -1684,8 +1740,8 @@ export const getKeyMetrics = async (req, res) => {
 
     for (let i = 0; i < symbols.length; i++) {
       const symbol = symbols[i];
-      const limit = 4; // Cambiar límite según el período
-
+      //const limit = 4; // Cambiar límite según el período
+      const limit = period === "annual" ? 10 : period === "quarter" ? 45 : 10; // Cambiar límite según el período
       const endpoint = `${endpointBase}${symbol}?period=${period}&limit=${limit}&apikey=${api_key}`;
 
       try {
@@ -1709,9 +1765,7 @@ export const getKeyMetrics = async (req, res) => {
 
         const lastFillingDateForSymbol =
           lastFillingDates.rows.find((row) => row.symbol === symbol) || {};
-        const lastFillingDate = lastFillingDateForSymbol.date;
-
-        console.log(lastFillingDate);
+        const lastFillingDate = lastFillingDateForSymbol.last_filling_date;
 
         const values = data
           .filter((item) => {
@@ -1827,23 +1881,35 @@ export const getKeyMetrics = async (req, res) => {
 
     console.log(`Llamados exitosos: ${success}, Llamados fallidos: ${failure}`);
 
-    return res.json({
+    /* return res.json({
       success: true,
       message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
-    });
+    }); */
+    return "Procesamiento completado";
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
+    /* return res.status(500).json({
       success: false,
       message: "Ha ocurrido un error al obtener los estados de resultados",
-    });
+    }); */
+    return "Procesamiento con error";
   }
 };
 
 export const getRatios = async (req, res) => {
   try {
-    const { symbols } = req.body;
-    const { period } = req.params;
+    console.log("llamando ratios");
+    let symbols, period;
+
+    if (req.symbols) {
+      // Si req.symbols tiene información, toma los valores de ahí
+      symbols = req.symbols;
+      period = req.period;
+    } else {
+      // De lo contrario, toma los valores de req.body y req.params
+      symbols = req.body.symbols;
+      period = req.params.period;
+    }
 
     const endpointBase = "https://financialmodelingprep.com/api/v3/ratios/";
 
@@ -1870,8 +1936,8 @@ export const getRatios = async (req, res) => {
 
     for (let i = 0; i < symbols.length; i++) {
       const symbol = symbols[i];
-      const limit = 4; // Cambiar límite según el período
-
+      //const limit = 4; // Cambiar límite según el período
+      const limit = period === "annual" ? 10 : period === "quarter" ? 45 : 10; // Cambiar límite según el período
       const endpoint = `${endpointBase}${symbol}?period=${period}&limit=${limit}&apikey=${api_key}`;
 
       try {
@@ -1895,7 +1961,7 @@ export const getRatios = async (req, res) => {
 
         const lastFillingDateForSymbol =
           lastFillingDates.rows.find((row) => row.symbol === symbol) || {};
-        const lastFillingDate = lastFillingDateForSymbol.date;
+        const lastFillingDate = lastFillingDateForSymbol.last_filling_date;
 
         const values = data
           .filter((item) => {
@@ -2012,18 +2078,111 @@ export const getRatios = async (req, res) => {
 
     console.log(`Llamados exitosos: ${success}, Llamados fallidos: ${failure}`);
 
-    return res.json({
+    /* return res.json({
       success: true,
       message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
-    });
+    }); */
+    return "Procesamiento completado";
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
+    /* return res.status(500).json({
       success: false,
       message: "Ha ocurrido un error al obtener los estados de resultados",
-    });
+    }); */
+    return "Procesamiento con error";
   }
 };
+
+// Endpoint para obtener y llamar a los statements
+export const getAndCallStatements = async (req, res) => {
+  try {
+    // Opcional: Definir res como un objeto vacío si no está definido
+    res = res || {};
+
+    const start = new Date();
+    console.log(start);
+    // Consulta para obtener los tickers de web_financial.tos_eps con fecha posterior a currentDate
+    const tickerQuery = `
+      SELECT t.ticker, t.quarter
+FROM web_financial.tos_eps t
+LEFT JOIN (
+	SELECT DISTINCT ON (symbol) symbol, period FROM web_financial.income_statement
+	where date is not null  AND period != 'FY' ORDER BY symbol, date DESC
+) i
+ON t.ticker = i.symbol AND t.quarter = i.period
+where cast(t.date as date) >= (select CURRENT_DATE-1)
+AND i.symbol IS NULL;
+    `;
+
+    const { rows: tickers } = await pool.query(tickerQuery);
+
+    // Filtra los tickers que tienen quarter igual a "Q4"
+    const tickersWithQ4 = tickers.filter((ticker) => ticker.quarter === "Q4");
+
+    // Extraer solo los tickers de los resultados en tickersWithQ4
+    /*     const tickersArray = tickers.map((tickerObj) => tickerObj.ticker);
+
+    const tickersArrayQ4 = tickersWithQ4.map((tickerObj) => tickerObj.ticker); */
+
+    const tickersArray = ["A"];
+
+    const tickersArrayQ4 = [];
+
+    // Función para llamar a getIncomeStatement en lotes
+    const callStatementInBatches = async (symbols, period) => {
+      const minBatchSize = 100; // Tamaño mínimo del lote
+      const batchSize = Math.max(minBatchSize, Math.ceil(symbols.length / 500)); // Calcula el tamaño del lote, con un mínimo de 100
+
+      // Divide los símbolos en lotes del tamaño calculado
+      const batches = [];
+      for (let i = 0; i < symbols.length; i += batchSize) {
+        batches.push(symbols.slice(i, i + batchSize));
+      }
+
+      console.log(
+        `Comenzando a procesar ${batches.length} batches de tamaño ${batchSize}`
+      );
+
+      // Iterar sobre los lotes y llamar a getIncomeStatement con cada lote
+      for (let i = 0; i < batches.length; i++) {
+        console.log(`Procesando batch ${i + 1}`);
+        await getIncomeStatement({ symbols: batches[i], period }, res);
+        await getBalanceSheet({ symbols: batches[i], period }, res);
+        await getCashFlow({ symbols: batches[i], period }, res);
+        await getKeyMetrics({ symbols: batches[i], period }, res);
+        await getRatios({ symbols: batches[i], period }, res);
+      }
+    };
+
+    // Condición para llamar a getIncomeStatement con tickersArrayQ4
+    if (tickersArrayQ4.length > 0) {
+      console.log("ejecutando la de q4");
+      await callStatementInBatches(tickersArrayQ4, "annual");
+      console.log("termino la de q4");
+    }
+
+    // Condición para llamar a getIncomeStatement con tickersArray
+    if (tickersArray.length > 0) {
+      await callStatementInBatches(tickersArray, "quarter");
+    }
+
+    const end = new Date();
+
+    console.log(
+      `Todas las llamadas a la API han finalizado en ${
+        (end - start) / 1000
+      } segundos`
+    );
+  } catch (error) {
+    console.error(error);
+    /* return res.status(500).json({
+      success: false,
+      message: "Ha ocurrido un error al obtener y llamar a los statements.",
+    }); */
+  }
+};
+
+//getAndCallStatements();
 //Alternativa buscando por ticker
 /*  let byTicker = await pool.query('SELECT * FROM web_financial.company_profile WHERE ticker = $1 ', [ticker]);
         if (byTicker.rows[0]) throw ({ code: 11000 }) */
