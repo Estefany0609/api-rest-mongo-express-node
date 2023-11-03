@@ -10,12 +10,13 @@ import {
   getSectores,
   getSubIndustrias,
   getCompanyProfile,
-  getIncomeStatement,
-  getBalanceSheet,
-  getCashFlow,
-  getKeyMetrics,
-  getRatios,
+  getIncomeStatementA,
+  getBalanceSheetA,
+  getCashFlowA,
+  getKeyMetricsA,
+  getRatiosA,
   getAndCallStatements,
+  getAndCallStatementsByDates,
 } from "../controllers/historical.controller.js";
 import { requireToken } from "../middlewares/requireToken.js";
 const router = Router();
@@ -29,11 +30,12 @@ router.post("/subIndustrias", requireToken, getSubIndustrias);
 
 router.post("/profile", newProfile);
 router.post("/AllStatement", getAndCallStatements);
-router.post("/IncomeStatement/:period", getIncomeStatement);
-router.post("/BalanceSheet/:period", getBalanceSheet);
-router.post("/CashFLow/:period", getCashFlow);
-router.post("/KeyMetrics/:period", getKeyMetrics);
-router.post("/Ratios/:period", getRatios);
+router.post("/AllStatementByDate", getAndCallStatementsByDates);
+router.post("/IncomeStatement/:period", getIncomeStatementA);
+router.post("/BalanceSheet/:period", getBalanceSheetA);
+router.post("/CashFLow/:period", getCashFlowA);
+router.post("/KeyMetrics/:period", getKeyMetricsA);
+router.post("/Ratios/:period", getRatiosA);
 
 router.get("/fileGoogle", readSheet);
 router.get("/fileGoogleFilter", requireToken, readSheetFilter);
