@@ -3242,7 +3242,7 @@ WHERE
   i.last_filling_date != b.last_filling_date
   OR i.last_filling_date != c.last_filling_date
   OR i.last_filling_date != k.last_filling_date
-  OR i.last_filling_date != r.last_filling_date limit 10;
+  OR i.last_filling_date != r.last_filling_date;
 `;
     const { rows: tickers } = await pool.query(tickerQuery);
 
