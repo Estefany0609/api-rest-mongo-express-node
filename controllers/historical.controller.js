@@ -14,6 +14,12 @@ import graph from "@microsoft/microsoft-graph-client";
 import axios from "axios";
 //import { clearConfigCache } from "prettier";
 
+import { sendMail } from "../utils/mailer.js";
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+import moment from "moment";
+
 const api_key = process.env.API_FINANCIAL;
 
 const getAccessToken = async () => {
@@ -2194,6 +2200,7 @@ export const getIncomeStatement = async (req, res) => {
           await pool.query(query);
 
           success++;
+          successCounts.income++;
         }
       } catch (error) {
         // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
@@ -2347,6 +2354,7 @@ export const getBalanceSheet = async (req, res) => {
           await pool.query(query);
 
           success++;
+          successCounts.balance++;
         }
       } catch (error) {
         // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
@@ -2523,6 +2531,7 @@ export const getCashFlow = async (req, res) => {
           await pool.query(query);
 
           success++;
+          successCounts.cash++;
         }
       } catch (error) {
         // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
@@ -2721,6 +2730,7 @@ export const getKeyMetrics = async (req, res) => {
           await pool.query(query);
 
           success++;
+          successCounts.key++;
         }
       } catch (error) {
         // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
@@ -2917,6 +2927,7 @@ export const getRatios = async (req, res) => {
           await pool.query(query);
 
           success++;
+          successCounts.ratios++;
         }
       } catch (error) {
         // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
@@ -2954,9 +2965,24 @@ export const getRatios = async (req, res) => {
   }
 };
 
+// Define un objeto global para almacenar los conteos
+const successCounts = {
+  income: 0,
+  balance: 0,
+  cash: 0,
+  key: 0,
+  ratios: 0,
+};
 // Endpoint para obtener y llamar a los statements
 export const getAndCallStatements = async (req, res) => {
   try {
+    // Reinicia los contadores al inicio de la función
+    successCounts.income = 0;
+    successCounts.balance = 0;
+    successCounts.cash = 0;
+    successCounts.key = 0;
+    successCounts.ratios = 0;
+
     let days = 30;
     const start = new Date();
     console.log(start);
@@ -3167,6 +3193,73 @@ export const getAndCallStatements = async (req, res) => {
     }
 
     const end = new Date();
+
+    // Construir el mensaje
+    const message = Object.keys(tickersArrays).map((statementType) => {
+      const { all, q4 } = tickersArrays[statementType];
+      const successCount = successCounts[statementType];
+
+      return `<li>${statementType.toUpperCase()} STATEMENT: De ${
+        all.length + q4.length
+      } tickers se ejecutaron exitosamente ${successCount}</li>`;
+    });
+
+    // Combina los elementos de la lista en un solo string
+    const messageBody = `<ul>${message.join("\n")}</ul>`;
+
+    // Establece __filename y __dirname para módulos ES6
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+
+    let sendPromises = [];
+
+    // Tu código existente
+    const templatePath = path.join(__dirname, "../utils/emailTemplate.html");
+    /* const templatePath = path.join(__dirname, "../utils/emailTemplate.html"); */
+
+    let mensaje = `<div style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;"> 
+
+Proceso de actualización Informes finalizado <span style="color: blue; font-weight: bold; text-decoration: underline;"> Todas las llamadas a la API han finalizado en ${
+      (end - start) / 1000
+    } segundos </span>`;
+
+    mensaje += "</div>"; // Cierra el div
+
+    mensaje += messageBody;
+
+    const template = `
+<div class="container">
+  <div class="header">
+    <div class="content">
+        <h2 style="color: rgb(80, 0, 80);text-align: center">Notificación Llamado diario Statements</h2>
+        {{MENSAJE_COMPLETO}}
+    </div>
+  </div>
+  
+</div>
+`;
+
+    // Reemplazar "{{MENSAJE_COMPLETO}}" en la plantilla con el mensaje personalizado
+    const customizedTemplate = template.replace(
+      "{{MENSAJE_COMPLETO}}",
+      mensaje
+    );
+
+    // Envia el correo
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: "estefanymeleon@hotmail.com,jleonnnnn@gmail.com", // Reemplaza con la dirección de correo a la que deseas enviar la notificación.
+      subject: "Proceso Llamado Statements completado",
+      text: "El proceso de la API ha finalizado con éxito.",
+      html: customizedTemplate,
+    };
+
+    // Aquí es donde añadimos la promesa de enviar el correo al array
+    sendPromises.push(
+      sendMail(mailOptions).catch((error) => {
+        console.log(`Error al enviar correo a ${email}:`, error);
+      })
+    );
 
     console.log(
       `Todas las llamadas a la API han finalizado en ${
