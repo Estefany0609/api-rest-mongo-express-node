@@ -2973,6 +2973,7 @@ const successCounts = {
   key: 0,
   ratios: 0,
 };
+
 // Endpoint para obtener y llamar a los statements
 export const getAndCallStatements = async (req, res) => {
   try {
