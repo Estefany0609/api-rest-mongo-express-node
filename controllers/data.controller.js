@@ -153,7 +153,7 @@ const getFases = async (req, res) => {
   const { ticker } = req.body;
   try {
     let query =
-      "SELECT date, fase_principal_cp, fase_subyacente_cp FROM web_financial.fases_mercado WHERE ticker = $1 order by date desc limit $2 ";
+      "select date, acumulacion_cp Acumulación , avance_cp Avance, distribucion_cp Distribución, correccion_cp Corrección FROM web_financial.fases_mercado WHERE ticker = $1 order by date desc limit $2 ";
     const values = [ticker, 15];
 
     let response = await pool.query(query, values);
