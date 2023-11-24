@@ -2972,6 +2972,7 @@ const successCounts = {
   cash: 0,
   key: 0,
   ratios: 0,
+  estimados: 0,
 };
 
 // Endpoint para obtener y llamar a los statements
@@ -3497,3 +3498,159 @@ WHERE
 };
 
 //getAndCallStatementsDates();
+
+export const getEstimates = async (req, res) => {
+  try {
+    let symbols, period;
+
+    if (req.symbols) {
+      // Si req.symbols tiene información, toma los valores de ahí
+      symbols = req.symbols;
+      period = req.period;
+    } else {
+      // De lo contrario, toma los valores de req.body y req.params
+      symbols = req.body.symbols;
+      period = req.params.period;
+    }
+
+    console.log(symbols, period);
+
+    const endpointBase =
+      "https://financialmodelingprep.com/api/v3/analyst-estimates/";
+
+    let count = 0;
+    let success = 0;
+    let failure = 0;
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
+
+    let periodFilter = "period != 'FY'";
+    if (period === "annual") {
+      periodFilter = "period = 'FY'";
+    }
+
+    // Obtener el último filling_date solo para los símbolos en tu lista
+    const lastFillingDates = await pool.query(
+      "SELECT symbol, MAX(date) AS last_filling_date " +
+        "FROM web_financial.financial_estimates " +
+        `WHERE date IS NOT NULL AND symbol IN ('${symbols.join("', '")}') ` +
+        "GROUP BY symbol"
+    );
+
+    for (let i = 0; i < symbols.length; i++) {
+      const symbol = symbols[i];
+      const limit = 30; // Cambiar límite según el período
+      //const limit = period === "annual" ? 10 : period === "quarter" ? 30 : 10; // Cambiar límite según el período
+      const endpoint = `${endpointBase}${symbol}?period=${period}&limit=${limit}&apikey=${api_key}`;
+
+      try {
+        // Realizar la solicitud HTTP a la API
+        const response = await fetch(endpoint);
+
+        if (!response.ok) {
+          // Si la respuesta no es exitosa, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const data = await response.json();
+
+        // Verificar si la respuesta es un array vacío o si contiene datos
+        if (!Array.isArray(data) || data.length === 0) {
+          // Si la respuesta es un array vacío, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+          failure++;
+          continue;
+        }
+
+        const lastFillingDateForSymbol =
+          lastFillingDates.rows.find((row) => row.symbol === symbol) || {};
+        const lastFillingDate = lastFillingDateForSymbol.last_filling_date;
+
+        const values = data
+          .filter((item) => {
+            if (!lastFillingDate) {
+              return true; // Si lastFillingDate es nulo, incluir todos los datos
+            }
+
+            // Convertir lastFillingDate a formato 'AAAA-MM-DD'
+            const formattedLastFillingDate = lastFillingDate
+              .toISOString()
+              .split("T")[0];
+
+            // Comparar las fechas
+            return item.date > formattedLastFillingDate;
+          })
+          .map((item) => {
+            return `(
+    '${item.symbol}',
+    '${item.date}',
+    ${item.estimatedRevenueLow},
+    ${item.estimatedRevenueHigh},
+    ${item.estimatedRevenueAvg},
+    ${item.estimatedEbitdaLow},
+    ${item.estimatedEbitdaHigh},
+    ${item.estimatedEbitdaAvg},
+    ${item.estimatedEbitLow},
+    ${item.estimatedEbitHigh},
+    ${item.estimatedEbitAvg},
+    ${item.estimatedNetIncomeLow},
+    ${item.estimatedNetIncomeHigh},
+    ${item.estimatedNetIncomeAvg},
+    ${item.estimatedSgaExpenseLow},
+    ${item.estimatedSgaExpenseHigh},
+    ${item.estimatedSgaExpenseAvg},
+    ${item.estimatedEpsAvg},
+    ${item.estimatedEpsHigh},
+    ${item.estimatedEpsLow},
+    ${item.numberAnalystEstimatedRevenue},
+    ${item.numberAnalystsEstimatedEps}
+  )`;
+          });
+
+        if (values.length > 0) {
+          const query = `
+  INSERT INTO web_financial.financial_estimates (
+    symbol, date, estimated_revenue_low, estimated_revenue_high, estimated_revenue_avg, estimated_ebitda_low, estimated_ebitda_high, estimated_ebitda_avg, estimated_ebit_low, estimated_ebit_high, estimated_ebit_avg, estimated_net_income_low, estimated_net_income_high, estimated_net_income_avg, estimated_sga_expense_low, estimated_sga_expense_high, estimated_sga_expense_avg, estimated_eps_avg, estimated_eps_high, estimated_eps_low, number_analyst_estimated_revenue, number_analysts_estimated_eps
+  )
+  VALUES
+    ${values.join(", ")}
+`;
+
+          await pool.query(query);
+
+          success++;
+          successCounts.estimados++;
+        }
+      } catch (error) {
+        // Si ocurre un error, aumentar el contador de fallos y continuar con la siguiente iteración del ciclo for
+        console.error(error);
+        failure++;
+        continue;
+      }
+
+      // Hacer una pausa de 4 segundos entre cada llamado a la API
+      count++;
+      if (count % 1500 === 0) {
+        console.log(
+          `Límite de llamados alcanzado. Haciendo una pausa de 1 minuto.`
+        );
+        await delay(60000); // Pausa de 1 minuto (60,000 ms)
+      } else {
+        await delay(4000); // Pausa de 4 segundos (4,000 ms)
+      }
+    }
+
+    console.log(`Llamados exitosos: ${success}, Llamados fallidos: ${failure}`);
+
+    return res.json({
+      success: true,
+      message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Ha ocurrido un error al obtener los estados de resultados",
+    });
+  }
+};
