@@ -3666,8 +3666,6 @@ export const getCryptoPrice = async (req, res) => {
     const fromDate = req.query.from || yesterday;
     const toDate = req.query.to || fromDate;
 
-    console.log(symbols, fromDate, toDate);
-
     const endpointBase =
       "https://financialmodelingprep.com/api/v3/historical-price-full/";
 
@@ -3725,6 +3723,7 @@ export const getCryptoPrice = async (req, res) => {
           ) VALUES ${values};
         `;
 
+        console.log(values);
         // Ejecutar la consulta de inserción
         //await pool.query(insertQuery);
         success++;
