@@ -3723,9 +3723,9 @@ export const getCryptoPrice = async (req, res) => {
           ) VALUES ${values};
         `;
 
-        console.log(values);
+        //console.log(values);
         // Ejecutar la consulta de inserción
-        //await pool.query(insertQuery);
+        await pool.query(insertQuery);
         success++;
       } catch (error) {
         console.error(error);
