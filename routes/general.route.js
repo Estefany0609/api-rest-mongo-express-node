@@ -18,6 +18,7 @@ import {
   getAndCallStatements,
   getAndCallStatementsByDates,
   getEstimates,
+  getCryptoPrice,
 } from "../controllers/historical.controller.js";
 import { requireToken } from "../middlewares/requireToken.js";
 const router = Router();
@@ -38,6 +39,7 @@ router.post("/CashFLow/:period", getCashFlowA);
 router.post("/KeyMetrics/:period", getKeyMetricsA);
 router.post("/Ratios/:period", getRatiosA);
 router.post("/Estimates/:period", getEstimates);
+router.post("/Crypto", getCryptoPrice);
 
 router.get("/fileGoogle", readSheet);
 router.get("/fileGoogleFilter", requireToken, readSheetFilter);
