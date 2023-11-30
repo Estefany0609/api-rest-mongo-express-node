@@ -3757,3 +3757,107 @@ export const getCryptoPrice = async (req, res) => {
     });
   }
 };
+
+export const getCommoditiesPrice = async (req, res) => {
+  try {
+    // Obtener la fecha de ayer
+    const currentDate = new Date();
+    currentDate.setDate(currentDate.getDate() - 1);
+    const yesterday = currentDate.toISOString().split("T")[0];
+
+    // Capturar los símbolos de criptomonedas y el período desde el cuerpo de la solicitud
+    const symbols = req.body.symbols; // Ejemplo: ['BTCUSD', 'ETHUSD']
+
+    const fromDate = req.query.from || yesterday;
+    const toDate = req.query.to || fromDate;
+
+    const endpointBase =
+      "https://financialmodelingprep.com/api/v3/historical-price-full/";
+
+    // Variables para el seguimiento de éxito y fallos
+    let count = 0;
+    let success = 0;
+    let failure = 0;
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
+
+    for (const symbol of symbols) {
+      const endpoint = `${endpointBase}${symbol}?from=${fromDate}&to=${toDate}&apikey=${api_key}`;
+
+      try {
+        const response = await fetch(endpoint);
+        if (!response.ok) {
+          failure++;
+          continue;
+        }
+
+        const data = await response.json();
+        const historicalData = data.historical;
+
+        if (!historicalData || historicalData.length === 0) {
+          failure++;
+          continue;
+        }
+
+        //console.log(data);
+        // Preparar los valores para la inserción en la base de datos
+        const values = historicalData
+          .map(
+            (item) => `(
+          '${symbol}',
+          '${item.date}',
+          ${item.open},
+          ${item.high},
+          ${item.low},
+          ${item.close},
+          ${item.adjClose},
+          ${item.volume},
+          ${item.unadjustedVolume},
+          ${item.change},
+          ${item.changePercent},
+          ${item.vwap},
+          '${item.label}',
+          ${item.changeOverTime}
+        )`
+          )
+          .join(", ");
+
+        const insertQuery = `
+          INSERT INTO web_financial.commodities_data (
+            symbol, date, open, high, low, close, adjclose, volume, unadjustedvolume, change, changepercent, vwap, label, changeovertime
+          ) VALUES ${values};
+        `;
+
+        // Ejecutar la consulta de inserción
+        await pool.query(insertQuery);
+        success++;
+      } catch (error) {
+        console.error(error);
+        failure++;
+      }
+
+      // Hacer una pausa de 4 segundos entre cada llamado a la API
+      count++;
+      if (count % 1500 === 0) {
+        console.log(
+          `Límite de llamados alcanzado. Haciendo una pausa de 1 minuto.`
+        );
+        await delay(60000); // Pausa de 1 minuto (60,000 ms)
+      } else {
+        await delay(4000); // Pausa de 4 segundos (4,000 ms)
+      }
+    }
+
+    // Devolver una respuesta con el resultado
+    return res.json({
+      success: true,
+      message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Error al obtener los precios de los Commodities",
+    });
+  }
+};
