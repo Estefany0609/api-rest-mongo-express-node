@@ -459,6 +459,21 @@ export const getTickerSM = async (req, res) => {
   }
 };
 
+export const getTickerIndices = async (req, res) => {
+  try {
+    const response = await pool.query(
+      "SELECT ticker, indice FROM web_financial.tos_indexs "
+    );
+    
+    if (!response.rows) throw { code: 11000 };
+    return res.json(response.rows);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "error de servidor" });
+  }
+};
+
+
 export const getCompanyProfile = async (req, res) => {
   try {
     const response = await pool.query(
