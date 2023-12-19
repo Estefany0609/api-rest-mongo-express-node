@@ -351,6 +351,19 @@ const getMacdData = async (req, res) => {
     throw error;
   }
 };
+
+const getInformes = async (req, res) => {
+  try {
+    const response = await pool.query(
+      "SELECT report_date, report FROM web_financial.market_sentiment_reports order by report_date desc"
+    );
+    if (!response.rows) throw { code: 11000 };
+    return res.json(response.rows);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "error de servidor" });
+  }
+};
 // Exportar las funciones que se utilizarán en otros archivos si es necesario
 export {
   getEMAData,
@@ -366,4 +379,5 @@ export {
   getAlgoritmoData,
   getHistoricalPrice,
   getMacdData,
+  getInformes,
 };
