@@ -364,6 +364,32 @@ const getInformes = async (req, res) => {
     return res.status(500).json({ error: "error de servidor" });
   }
 };
+
+const getFasesDetallada = async (req, res) => {
+  try {
+    const response = await pool.query(
+      ` SELECT sector, industry, sub_industry, 
+    SUM(acumulacion_cp) AS Acumulacion,
+    SUM(avance_cp) AS Avance,
+    SUM(distribucion_cp) AS Distribucion,
+    SUM(correccion_cp) AS Correccion,
+    SUM(acumulacion_cp) + SUM(avance_cp) + SUM(distribucion_cp) + SUM(correccion_cp) AS Total,
+    CAST((SUM(acumulacion_cp) / (SUM(acumulacion_cp) + SUM(avance_cp) + SUM(distribucion_cp) + SUM(correccion_cp)) * 100) AS DECIMAL(10,2)) AS Porcentaje_Acumulacion,
+    CAST((SUM(avance_cp) / (SUM(acumulacion_cp) + SUM(avance_cp) + SUM(distribucion_cp) + SUM(correccion_cp)) * 100) AS DECIMAL(10,2)) AS Porcentaje_Avance,
+    CAST((SUM(distribucion_cp) / (SUM(acumulacion_cp) + SUM(avance_cp) + SUM(distribucion_cp) + SUM(correccion_cp)) * 100) AS DECIMAL(10,2)) AS Porcentaje_Distribucion,
+    CAST((SUM(correccion_cp) / (SUM(acumulacion_cp) + SUM(avance_cp) + SUM(distribucion_cp) + SUM(correccion_cp)) * 100) AS DECIMAL(10,2)) AS Porcentaje_Correccion
+FROM  web_financial.fases_del_mercado
+WHERE date >= (SELECT MAX(date) from web_financial.fases_del_mercado)
+GROUP BY sector, industry, sub_industry`
+    );
+
+    if (!response.rows) throw { code: 11000 };
+    return res.json(response.rows);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "error de servidor" });
+  }
+};
 // Exportar las funciones que se utilizarán en otros archivos si es necesario
 export {
   getEMAData,
@@ -380,4 +406,5 @@ export {
   getHistoricalPrice,
   getMacdData,
   getInformes,
+  getFasesDetallada,
 };
