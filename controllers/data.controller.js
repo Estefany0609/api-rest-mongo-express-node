@@ -406,7 +406,7 @@ FROM
          AVG((roc_5+roc_10+roc_20)/3) OVER (PARTITION BY ticker ORDER BY date ROWS BETWEEN 4 PRECEDING AND CURRENT ROW)  AS sma_corto_plazo,
          AVG((roc_50+roc_100)/2) OVER (PARTITION BY ticker ORDER BY date ROWS BETWEEN 9 PRECEDING AND CURRENT ROW) AS sma_mediano_plazo,
          AVG((roc_200+roc_260)/2) OVER (PARTITION BY ticker ORDER BY date ROWS BETWEEN 19 PRECEDING AND CURRENT ROW) AS sma_largo_plazo
-     FROM web_financial.fases_del_mercado where cast(date as date) >= (select CURRENT_DATE - 100)
+     FROM web_financial.fases_del_mercado where cast(date as date) >= (select CURRENT_DATE - 50)
     ) AS sma_calculations WHERE date = (select max(date) from web_financial.fases_del_mercado )
 GROUP BY date, sector, industry, sub_industry
 ORDER BY sector, industry, sub_industry;`
@@ -419,6 +419,8 @@ ORDER BY sector, industry, sub_industry;`
     return res.status(500).json({ error: "error de servidor" });
   }
 };
+
+
 // Exportar las funciones que se utilizarán en otros archivos si es necesario
 export {
   getEMAData,
