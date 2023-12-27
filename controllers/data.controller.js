@@ -394,22 +394,7 @@ GROUP BY sector, industry, sub_industry`
 const getRocDetallados = async (req, res) => {
   try {
     const response = await pool.query(
-      ` SELECT sector, industry, sub_industry,
-    -- Promedio de SMA para corto plazo (agrupado)
-    CAST(AVG(sma_corto_plazo) AS DECIMAL(10,2)) AS promedio_sma_corto_plazo,
-    -- Promedio de SMA para mediano plazo (agrupado)
-    CAST(AVG(sma_mediano_plazo) AS DECIMAL(10,2)) AS promedio_sma_mediano_plazo,
-    -- Promedio de SMA para largo plazo (agrupado)
-    CAST(AVG(sma_largo_plazo) AS DECIMAL(10,2) )AS promedio_sma_largo_plazo
-FROM
-    (SELECT date, sector, industry, sub_industry,
-         AVG((roc_5+roc_10+roc_20)/3) OVER (PARTITION BY ticker ORDER BY date ROWS BETWEEN 4 PRECEDING AND CURRENT ROW)  AS sma_corto_plazo,
-         AVG((roc_50+roc_100)/2) OVER (PARTITION BY ticker ORDER BY date ROWS BETWEEN 9 PRECEDING AND CURRENT ROW) AS sma_mediano_plazo,
-         AVG((roc_200+roc_260)/2) OVER (PARTITION BY ticker ORDER BY date ROWS BETWEEN 19 PRECEDING AND CURRENT ROW) AS sma_largo_plazo
-     FROM web_financial.fases_del_mercado where cast(date as date) >= (select CURRENT_DATE - 50)
-    ) AS sma_calculations WHERE date = (select max(date) from web_financial.fases_del_mercado )
-GROUP BY date, sector, industry, sub_industry
-ORDER BY sector, industry, sub_industry;`
+      ` SELECT * FROM web_financial.sector_industry_analysis_roc WHERE date = (select max(date) from web_financial.sector_industry_analysis_roc ) ORDER BY sector, industry, sub_industry;`
     );
 
     if (!response.rows) throw { code: 11000 };
@@ -419,7 +404,6 @@ ORDER BY sector, industry, sub_industry;`
     return res.status(500).json({ error: "error de servidor" });
   }
 };
-
 
 // Exportar las funciones que se utilizarán en otros archivos si es necesario
 export {
