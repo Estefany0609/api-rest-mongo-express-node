@@ -405,6 +405,25 @@ const getRocDetallados = async (req, res) => {
   }
 };
 
+const getPressionLastDay = async (req, res) => {
+  try {
+    const response = await pool.query(
+      ` SELECT
+    SUM(buy_volume) AS total_buy_transactions,
+    SUM(sales_volume) AS total_sales_transactions,
+   CAST(  (SUM(buy_volume) - SUM(sales_volume)) / (SUM(buy_volume) + SUM(sales_volume)) * 100 AS decimal (10,2)) AS net_pressure_pct
+FROM web_financial.presion_volumen
+WHERE date = (select max(date)FROM web_financial.presion_volumen) `
+    );
+
+    if (!response.rows) throw { code: 11000 };
+    return res.json(response.rows);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "error de servidor" });
+  }
+};
+
 // Exportar las funciones que se utilizarán en otros archivos si es necesario
 export {
   getEMAData,
@@ -423,4 +442,5 @@ export {
   getInformes,
   getFasesDetallada,
   getRocDetallados,
+  getPressionLastDay,
 };
