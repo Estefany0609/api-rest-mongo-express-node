@@ -3971,7 +3971,7 @@ export const getEconomicsData = async (req, res) => {
         `;
 
         // Ejecutar la consulta de inserción
-        //await pool.query(insertQuery);
+        await pool.query(insertQuery);
         success++;
       } catch (error) {
         console.error(error);
