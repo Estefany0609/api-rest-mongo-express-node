@@ -464,7 +464,7 @@ export const getTickerIndices = async (req, res) => {
     const response = await pool.query(
       "SELECT ticker, indice FROM web_financial.tos_indexs "
     );
-    
+
     if (!response.rows) throw { code: 11000 };
     return res.json(response.rows);
   } catch (error) {
@@ -472,7 +472,6 @@ export const getTickerIndices = async (req, res) => {
     return res.status(500).json({ error: "error de servidor" });
   }
 };
-
 
 export const getCompanyProfile = async (req, res) => {
   try {
@@ -3887,8 +3886,22 @@ export const getEconomicsData = async (req, res) => {
     // Capturar los símbolos de criptomonedas y el período desde el cuerpo de la solicitud
     const symbols = req.body.symbols; // Ejemplo: ['BTCUSD', 'ETHUSD']
 
-    const fromDate = req.query.from || yesterday;
-    const toDate = req.query.to || fromDate;
+    //const fromDate = req.query.from || yesterday;
+    //const toDate = req.query.to || fromDate;
+    const toDate = req.query.to || yesterday;
+
+    const maxDatesQuery = `
+      SELECT symbol, MAX(date) as max_date FROM web_financial.datos_economicos WHERE symbol IN (${symbols
+        .map((symbol) => `'${symbol}'`)
+        .join(", ")}) GROUP BY symbol;
+    `;
+
+    const maxDatesResult = await pool.query(maxDatesQuery);
+
+    const maxDates = maxDatesResult.rows.reduce((acc, row) => {
+      acc[row.symbol] = row.max_date;
+      return acc;
+    }, {});
 
     const endpointBase =
       "https://api.stlouisfed.org/fred/series/observations?series_id=";
@@ -3903,6 +3916,13 @@ export const getEconomicsData = async (req, res) => {
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
 
     for (const symbol of symbols) {
+      const fromDate =
+        maxDates[symbol].toISOString().split("T")[0] ||
+        new Date().toISOString().split("T")[0];
+      const maxDate = new Date(
+        maxDates[symbol] || new Date().toISOString().split("T")[0]
+      );
+
       const endpoint = `${endpointBase}${symbol}&api_key=${apiKey}&file_type=json&observation_start=${fromDate}&observation_end=${toDate}`;
 
       try {
@@ -3922,14 +3942,25 @@ export const getEconomicsData = async (req, res) => {
         }
 
         //console.log(data);
+        // Filtrar los datos históricos para excluir la fecha máxima ya almacenada
+        const filteredHistoricalData = historicalData.filter((item) => {
+          const itemDate = new Date(item.date);
+          return itemDate > maxDate;
+        });
+
+        if (filteredHistoricalData.length === 0) {
+          failure++;
+          continue;
+        }
+
         // Preparar los valores para la inserción en la base de datos
-        const values = historicalData
+        const values = filteredHistoricalData
           .map(
             (item) => `(
-          '${symbol}',
-          '${item.date}',
-          ${item.value}
-        )`
+        '${symbol}',
+        '${item.date}',
+        ${item.value}
+      )`
           )
           .join(", ");
 
@@ -3940,7 +3971,7 @@ export const getEconomicsData = async (req, res) => {
         `;
 
         // Ejecutar la consulta de inserción
-        await pool.query(insertQuery);
+        //await pool.query(insertQuery);
         success++;
       } catch (error) {
         console.error(error);

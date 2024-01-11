@@ -1,10 +1,6 @@
 import axios from "axios";
 import { pool } from "../database/connectdb.js";
-const api_key = process.env.API_CHATGPT;
-import { Configuration, OpenAIApi } from "openai";
-
-// Crea una instancia del cliente de OpenAI
-const client = new OpenAIApi(api_key);
+import openai from "../utils/openaiClient.js";
 
 const getEMAData = async (ticker, limit) => {
   try {
@@ -424,6 +420,177 @@ WHERE date = (select max(date)FROM web_financial.presion_volumen) `
   }
 };
 
+const getCurrentDateFormatted = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0"); // Los meses en JavaScript comienzan en 0
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const yourFunction = async (req, res) => {
+  try {
+    const marketSummary = await pool.query(
+      ` SELECT
+      SUM(buy_volume) AS total_buy_transactions,
+      SUM(sales_volume) AS total_sales_transactions,
+      CAST((SUM(buy_volume) - SUM(sales_volume)) / (SUM(buy_volume) + SUM(sales_volume)) * 100 AS decimal (10,2)) AS net_pressure_pct
+    FROM web_financial.presion_volumen
+    WHERE date = (SELECT MAX(date) FROM web_financial.presion_volumen) `
+    );
+
+    const detailedDataResults = await pool.query(
+      ` WITH RankedSectors AS (
+    SELECT
+        sector,
+        industry,
+        sub_industry,
+        SUM(buy_volume) - SUM(sales_volume) AS net_sector_volume,
+        CAST((SUM(buy_volume) - SUM(sales_volume)) / NULLIF(SUM(buy_volume) + SUM(sales_volume), 0) * 100 AS DECIMAL (10,2)) AS net_sector_pressure_pct,
+        CAST(AVG(rsi) AS DECIMAL (10,2)) AS average_rsi,
+        CAST((AVG(_5_days_presion) + AVG(_10_days_presion) + AVG(_20_days_presion)) / 3  AS DECIMAL (10,2)) AS short_term_pressure_avg,
+        CAST((AVG(_50_days_presion) + AVG(_100_days_presion)) / 2  AS DECIMAL (10,2)) AS medium_term_pressure_avg,
+        CAST((AVG(_200_days_presion) + AVG(_260_days_presion)) / 2  AS DECIMAL (10,2)) AS long_term_pressure_avg,
+        CASE
+            WHEN AVG(rsi) < 30 THEN 'Sobrevendida'
+            WHEN AVG(rsi) BETWEEN 30 AND 40 THEN 'Recuperación Moderada'
+            WHEN AVG(rsi) BETWEEN 40 AND 50 THEN 'Equilibrio Tentativo'
+            WHEN AVG(rsi) BETWEEN 50 AND 60 THEN 'Fortaleza Moderada'
+            WHEN AVG(rsi) BETWEEN 60 AND 70 THEN 'Demanda Fuerte'
+            WHEN AVG(rsi) BETWEEN 70 AND 80 THEN 'Sobrecompra Moderada'
+            WHEN AVG(rsi) BETWEEN 80 AND 90 THEN 'Sobrecompra Fuerte'
+            ELSE 'Sobrecompra Extrema'
+        END AS rsi_interpretation
+    FROM
+        web_financial.presion_volumen
+    WHERE
+       date = (select max(date)FROM web_financial.presion_volumen)
+        AND TRIM(sector) <> ''
+        AND TRIM(industry) <> ''
+        AND TRIM(sub_industry) <> ''
+		AND preassure_daily IS NOT NULL
+    GROUP BY
+        sector, industry, sub_industry
+),
+TopSectors AS (
+    SELECT *
+    FROM RankedSectors
+    ORDER BY net_sector_pressure_pct DESC
+    LIMIT 5
+),
+BottomSectors AS (
+    SELECT *
+    FROM RankedSectors
+    ORDER BY net_sector_pressure_pct
+    LIMIT 5
+)
+SELECT * FROM TopSectors
+UNION ALL
+SELECT * FROM BottomSectors; `
+    );
+
+    console.log(marketSummary.rows[0]);
+    const formatMarketSummary = (marketSummary) => {
+      return `-Total de transacciones de compra: ${marketSummary.total_buy_transactions}
+-Total de transacciones de venta: ${marketSummary.total_sales_transactions}
+-Porcentaje de presión neta: ${marketSummary.net_pressure_pct}`;
+    };
+
+    const formatDetailedData = (detailedDataResults) => {
+      return detailedDataResults
+        .map((row) => {
+          return `Sector: ${row.sector}
+Industria: ${row.industry}
+Subindustria: ${row.sub_industry}
+Volumen neto del sector: ${row.net_sector_volume}
+Porcentaje de presión neta del sector: ${row.net_sector_pressure_pct}
+RSI promedio: ${row.average_rsi}
+Promedio de presión a corto plazo: ${row.short_term_pressure_avg}
+Promedio de presión a medio plazo: ${row.medium_term_pressure_avg}
+Promedio de presión a largo plazo: ${row.long_term_pressure_avg}
+Interpretación del RSI: ${row.rsi_interpretation}`;
+        })
+        .join("\n\n");
+    };
+
+    const marketSummaryFormatted = formatMarketSummary(marketSummary.rows[0]);
+    const detailedDataFormatted = formatDetailedData(detailedDataResults.rows);
+
+    const currentDate = getCurrentDateFormatted();
+
+    const prompt = `
+
+Generar un analisis holistico del sentimiento del mercado accionario para la fecha '${currentDate}', interrelacionando los siguientes datos:
+
+1. Introducción:
+
+Aquí queremos que el lector lea un resumen de los análisis y conclusiones que se van a encontrar más adelante.
+
+2. Resumen General del Mercado:
+
+- Mostrar estos datos uno debajo del otro en el informe:
+${marketSummaryFormatted}
+
+Adicionalmente realizar analisis cortos, puntuales y sencillos para reforzar la idea basica del reporte acerca de la presion del volumen.
+
+3. Conclusiones y Consideraciones Finales:
+
+(Replicar esta estructura para el anilisis de cada sector, con los datos que se muestran uno debajo del otro
+
+Sector (Industry, Sub-Industry):
+
+-Presión Neta del Sector: xxx
+-RSI Promedio: xx
+-Presión a Corto, Mediano y Largo Plazo: xx.xx, xx.xx, xx.xx
+Conclusion y analisis)
+
+Basándome en el análisis de los datos proporcionados, incluir conclusiones y consideraciones finales acerca del sentimiento del mercado, tendencias observadas y cualquier otro aspecto destacable. 
+
+Incluir una mención estrategica que permita proyectar la fortaleza o debilidad del sector, industria o subindustria con base en la presion del volumen neto para cada periodo de tiempo, Corto Mediano y Largo Plazo.
+
+Datos:  
+${detailedDataFormatted}
+`;
+
+    console.log(prompt);
+
+    //generateOpenAIReport(prompt);
+
+    /* const completion = await openai.createChatCompletion({
+      model: "gpt-4",
+      messages: [{ role: "user", content: "cuentame un chiste" }],
+    });
+
+    console.log(completion.data.choices[0].message.content); */
+
+    //res.status(200).json({ message: completion.data.choices }); // Asegúrate de que accedes a la propiedad correcta
+  } catch (error) {
+    console.error("Error al llamar a la API de OpenAI:", error);
+    //res.status(500).json({ error: error.message });
+  }
+};
+
+//yourFunction();
+
+const generateOpenAIReport = async (prompt) => {
+  try {
+    const completion = await openai.createChatCompletion({
+      model: "gpt-4",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 1000, // Ajusta según la necesidad
+    });
+
+    console.log(completion.data.choices[0].message.content);
+    // Aquí podrías hacer algo más con el texto generado, como guardarlo o enviarlo
+  } catch (error) {
+    console.error("Error al llamar a la API de OpenAI:", error);
+    throw error;
+  }
+};
+
+//generateOpenAIReport(prompt);
+
 // Exportar las funciones que se utilizarán en otros archivos si es necesario
 export {
   getEMAData,
@@ -443,4 +610,5 @@ export {
   getFasesDetallada,
   getRocDetallados,
   getPressionLastDay,
+  yourFunction,
 };

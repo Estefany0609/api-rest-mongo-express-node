@@ -18,6 +18,7 @@ import {
   getFasesDetallada,
   getRocDetallados,
   getPressionLastDay,
+  yourFunction,
 } from "../controllers/data.controller.js";
 
 const router = Router();
@@ -40,5 +41,6 @@ router.get("/informes", getInformes);
 router.get("/fasesDetalle", getFasesDetallada);
 router.get("/rocDetalle", getRocDetallados);
 router.get("/pressionLast", getPressionLastDay);
+router.post("/analyze", yourFunction);
 
 export default router;
