@@ -21,6 +21,7 @@ import { dirname } from "path";
 import moment from "moment";
 
 const api_key = process.env.API_FINANCIAL;
+const api_key_fred = process.env.API_FRED;
 
 const getAccessToken = async () => {
   const clientId = process.env.CLIENT_ID;
@@ -3886,8 +3887,9 @@ export const getEconomicsData = async (req, res) => {
     // Capturar los símbolos de criptomonedas y el período desde el cuerpo de la solicitud
     const symbols = req.body.symbols; // Ejemplo: ['BTCUSD', 'ETHUSD']
 
-    //const fromDate = req.query.from || yesterday;
-    //const toDate = req.query.to || fromDate;
+    /* const fromDate = req.query.from || yesterday;
+    const toDate = req.query.to || fromDate; */
+
     const toDate = req.query.to || yesterday;
 
     const maxDatesQuery = `
@@ -3906,7 +3908,7 @@ export const getEconomicsData = async (req, res) => {
     const endpointBase =
       "https://api.stlouisfed.org/fred/series/observations?series_id=";
 
-    const apiKey = "cda2be882cb789614ace3ece51089b43";
+    const apiKey = api_key_fred;
 
     // Variables para el seguimiento de éxito y fallos
     let count = 0;
@@ -3916,6 +3918,145 @@ export const getEconomicsData = async (req, res) => {
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
 
     for (const symbol of symbols) {
+      //Seleccion de la ultima fecha disponible en la tabla
+      const fromDate =
+        maxDates[symbol].toISOString().split("T")[0] ||
+        new Date().toISOString().split("T")[0];
+      const maxDate = new Date(
+        maxDates[symbol] || new Date().toISOString().split("T")[0]
+      );
+
+      const endpoint = `${endpointBase}${symbol}&api_key=${apiKey}&file_type=json&observation_start=${fromDate}&observation_end=${toDate}`;
+
+      try {
+        const response = await fetch(endpoint);
+        if (!response.ok) {
+          failure++;
+          continue;
+        }
+
+        const data = await response.json();
+
+        const historicalData = data.observations;
+
+        if (!historicalData || historicalData.length === 0) {
+          failure++;
+          continue;
+        }
+
+        // Filtrar los datos históricos para excluir la fecha máxima ya almacenada
+        const filteredHistoricalData = historicalData.filter((item) => {
+          const itemDate = new Date(item.date);
+          return itemDate > maxDate;
+        });
+
+        if (filteredHistoricalData.length === 0) {
+          failure++;
+          continue;
+        }
+
+        // Preparar los valores para la inserción en la base de datos
+        const values = filteredHistoricalData
+          .map(
+            (item) => `(
+        '${symbol}',
+        '${item.date}',
+        ${item.value}
+      )`
+          )
+          .join(", ");
+
+        // Preparar los valores para la inserción en la base de datos insercion de la totalidad
+        /* const values = historicalData
+          .map(
+            (item) => `(
+        '${symbol}',
+        '${item.date}',
+        ${item.value}
+      )`
+          )
+          .join(", "); */
+
+        const insertQuery = `
+          INSERT INTO web_financial.datos_economicos (
+            symbol, date, value
+          ) VALUES ${values};
+        `;
+
+        // Ejecutar la consulta de inserción
+        await pool.query(insertQuery);
+        success++;
+      } catch (error) {
+        console.error(error);
+        failure++;
+      }
+
+      // Hacer una pausa de 4 segundos entre cada llamado a la API
+      count++;
+      if (count % 1500 === 0) {
+        console.log(
+          `Límite de llamados alcanzado. Haciendo una pausa de 1 minuto.`
+        );
+        await delay(60000); // Pausa de 1 minuto (60,000 ms)
+      } else {
+        await delay(4000); // Pausa de 4 segundos (4,000 ms)
+      }
+    }
+
+    // Devolver una respuesta con el resultado
+    return res.json({
+      success: true,
+      message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Error al obtener los precios de los Datos Economicos",
+    });
+  }
+};
+
+export const getNominalUsDollarIndex = async (req, res) => {
+  try {
+    // Obtener la fecha de ayer
+    const currentDate = new Date();
+    currentDate.setDate(currentDate.getDate() - 1);
+    const yesterday = currentDate.toISOString().split("T")[0];
+
+    // Capturar los símbolos de criptomonedas y el período desde el cuerpo de la solicitud
+    const symbols = req.body.symbols; // Ejemplo: ['BTCUSD', 'ETHUSD']
+
+    /*     const fromDate = req.query.from || yesterday;
+    const toDate = req.query.to || fromDate; */
+
+    const toDate = req.query.to || yesterday;
+
+    const maxDatesQuery = `
+      SELECT symbol, MAX(date) as max_date FROM web_financial.nominal_us_dollar_index GROUP BY symbol;
+    `;
+
+    const maxDatesResult = await pool.query(maxDatesQuery);
+
+    const maxDates = maxDatesResult.rows.reduce((acc, row) => {
+      acc[row.symbol] = row.max_date;
+      return acc;
+    }, {});
+
+    const endpointBase =
+      "https://api.stlouisfed.org/fred/series/observations?series_id=";
+
+    const apiKey = api_key_fred;
+
+    // Variables para el seguimiento de éxito y fallos
+    let count = 0;
+    let success = 0;
+    let failure = 0;
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
+
+    for (const symbol of symbols) {
+      //Seleccion de la ultima fecha disponible en la tabla
       const fromDate =
         maxDates[symbol].toISOString().split("T")[0] ||
         new Date().toISOString().split("T")[0];
@@ -3964,8 +4105,22 @@ export const getEconomicsData = async (req, res) => {
           )
           .join(", ");
 
+        // Preparar los valores para la inserción en la base de datos insercion de la totalidad
+        /* const values = historicalData
+          .filter((item) => item.value !== ".") // Filtra los elementos con valores '.'
+          .map(
+            (item) => `(
+        '${symbol}',
+        '${item.date}',
+        ${item.value}
+    )`
+          )
+          .join(", "); */
+
+        console.log(values);
+
         const insertQuery = `
-          INSERT INTO web_financial.datos_economicos (
+          INSERT INTO web_financial.nominal_us_dollar_index (
             symbol, date, value
           ) VALUES ${values};
         `;

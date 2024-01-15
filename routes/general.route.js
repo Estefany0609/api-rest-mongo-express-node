@@ -21,6 +21,7 @@ import {
   getCryptoPrice,
   getCommoditiesPrice,
   getEconomicsData,
+  getNominalUsDollarIndex,
   getTickerIndices,
 } from "../controllers/historical.controller.js";
 import { requireToken } from "../middlewares/requireToken.js";
@@ -46,6 +47,7 @@ router.post("/Estimates/:period", getEstimates);
 router.post("/Crypto", getCryptoPrice);
 router.post("/Commodities", getCommoditiesPrice);
 router.post("/Economics", getEconomicsData);
+router.post("/EconomicsDollarIndex", getNominalUsDollarIndex);
 
 router.get("/fileGoogle", readSheet);
 router.get("/fileGoogleFilter", requireToken, readSheetFilter);
