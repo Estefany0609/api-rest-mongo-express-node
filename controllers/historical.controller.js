@@ -3927,6 +3927,7 @@ export const getEconomicsData = async (req, res) => {
       );
 
       const endpoint = `${endpointBase}${symbol}&api_key=${apiKey}&file_type=json&observation_start=${fromDate}&observation_end=${toDate}`;
+      console.log(endpoint);
 
       try {
         const response = await fetch(endpoint);
@@ -3966,6 +3967,7 @@ export const getEconomicsData = async (req, res) => {
           )
           .join(", ");
 
+        console.log(values);
         // Preparar los valores para la inserción en la base de datos insercion de la totalidad
         /* const values = historicalData
           .map(
@@ -4104,6 +4106,7 @@ export const getNominalUsDollarIndex = async (req, res) => {
       )`
           )
           .join(", ");
+        console.log(values);
 
         // Preparar los valores para la inserción en la base de datos insercion de la totalidad
         /* const values = historicalData
