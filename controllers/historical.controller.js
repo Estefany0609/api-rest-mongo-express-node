@@ -3881,7 +3881,7 @@ export const getEconomicsData = async (req, res) => {
   try {
     // Obtener la fecha de ayer
     const currentDate = new Date();
-    currentDate.setDate(currentDate.getDate() - 1);
+    currentDate.setDate(currentDate.getDate());
     const yesterday = currentDate.toISOString().split("T")[0];
 
     // Capturar los símbolos de criptomonedas y el período desde el cuerpo de la solicitud
@@ -4021,7 +4021,7 @@ export const getNominalUsDollarIndex = async (req, res) => {
   try {
     // Obtener la fecha de ayer
     const currentDate = new Date();
-    currentDate.setDate(currentDate.getDate() - 1);
+    currentDate.setDate(currentDate.getDate());
     const yesterday = currentDate.toISOString().split("T")[0];
 
     // Capturar los símbolos de criptomonedas y el período desde el cuerpo de la solicitud
