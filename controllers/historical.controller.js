@@ -4023,6 +4023,7 @@ export const getNominalUsDollarIndex = async (req, res) => {
   try {
     // Obtener la fecha de ayer
     const currentDate = new Date();
+    console.log(currentDate);
     currentDate.setDate(currentDate.getDate() - 1);
     const yesterday = currentDate.toISOString().split("T")[0];
 
