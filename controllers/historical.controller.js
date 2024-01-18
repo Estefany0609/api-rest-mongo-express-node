@@ -4045,6 +4045,7 @@ export const getNominalUsDollarIndex = async (req, res) => {
       acc[row.symbol] = row.max_date;
       return acc;
     }, {});
+    console.log(maxDates);
 
     const endpointBase =
       "https://api.stlouisfed.org/fred/series/observations?series_id=";
@@ -4068,6 +4069,7 @@ export const getNominalUsDollarIndex = async (req, res) => {
       );
 
       const endpoint = `${endpointBase}${symbol}&api_key=${apiKey}&file_type=json&observation_start=${fromDate}&observation_end=${toDate}`;
+      console.log(endpoint);
 
       try {
         const response = await fetch(endpoint);
