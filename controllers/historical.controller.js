@@ -1250,6 +1250,9 @@ export const getIncomeStatementA = async (req, res) => {
       period = req.params.period;
     }
 
+    // Obtener la fecha actual en formato 'AAAA-MM-DD'
+    const currentDate = new Date().toISOString().split("T")[0];
+
     const endpointBase =
       "https://financialmodelingprep.com/api/v3/income-statement/";
 
@@ -1329,7 +1332,7 @@ export const getIncomeStatementA = async (req, res) => {
       ${item.ebitda}, ${item.ebitdaratio}, ${item.operatingIncome}, ${item.operatingIncomeRatio},
       ${item.totalOtherIncomeExpensesNet}, ${item.incomeBeforeTax}, ${item.incomeBeforeTaxRatio},
       ${item.incomeTaxExpense}, ${item.netIncome}, ${item.netIncomeRatio}, ${item.eps}, ${item.epsdiluted},
-      ${item.weightedAverageShsOut}, ${item.weightedAverageShsOutDil}, '${item.link}', '${item.finalLink}'
+      ${item.weightedAverageShsOut}, ${item.weightedAverageShsOutDil}, '${item.link}', '${item.finalLink}',   '${currentDate}'
     )`;
           });
 
@@ -1342,7 +1345,7 @@ export const getIncomeStatementA = async (req, res) => {
               selling_and_marketing_expenses, selling_general_and_administrative_expenses, other_expenses,
               operating_expenses, cost_and_expenses, interest_income, interest_expense, depreciation_and_amortization, ebitda, ebitda_ratio,
               operating_income, operating_income_ratio, total_other_income_expenses_net, income_before_tax, income_before_tax_ratio, income_tax_expense,
-              net_income, net_income_ratio, eps, eps_diluted, weighted_average_shs_out, weighted_average_shs_out_dil, link, final_link
+              net_income, net_income_ratio, eps, eps_diluted, weighted_average_shs_out, weighted_average_shs_out_dil, link, final_link, record_date
             )
             
             VALUES
@@ -1401,6 +1404,8 @@ export const getBalanceSheetA = async (req, res) => {
       symbols = req.body.symbols;
       period = req.params.period;
     }
+
+    const currentDate = new Date().toISOString().split("T")[0];
 
     const endpointBase =
       "https://financialmodelingprep.com/api/v3/balance-sheet-statement/";
@@ -1484,14 +1489,14 @@ export const getBalanceSheetA = async (req, res) => {
     ${item.preferredStock}, ${item.commonStock}, ${item.retainedEarnings}, ${item.accumulatedOtherComprehensiveIncomeLoss},
     ${item.othertotalStockholdersEquity}, ${item.totalStockholdersEquity}, ${item.totalEquity}, ${item.totalLiabilitiesAndStockholdersEquity},
     ${item.minorityInterest}, ${item.totalLiabilitiesAndTotalEquity}, ${item.totalInvestments}, ${item.totalDebt},
-    ${item.netDebt}, '${item.link}', '${item.finalLink}'
+    ${item.netDebt}, '${item.link}', '${item.finalLink}', '${currentDate}'
   )`;
           });
 
         if (values.length > 0) {
           const query = `
   INSERT INTO web_financial.balance_sheet(
-    date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period, cash_and_cash_equivalents, short_term_investments, cash_and_short_term_investments, net_receivables, inventory, other_current_assets, total_current_assets, property_plant_equipment_net, goodwill, intangible_assets, goodwill_and_intangible_assets, long_term_investments, tax_assets, other_non_current_assets, total_non_current_assets, other_assets, total_assets, account_payables, short_term_debt, tax_payables, deferred_revenue, other_current_liabilities, total_current_liabilities, long_term_debt, deferred_revenue_non_current, deferred_tax_liabilities_non_current, other_non_current_liabilities, total_non_current_liabilities, other_liabilities, capital_lease_obligations, total_liabilities, preferred_stock, common_stock, retained_earnings, accumulated_other_comprehensive_income_loss, other_total_stockholders_equity, total_stockholders_equity, total_equity, total_liabilities_and_stockholders_equity, minority_interest, total_liabilities_and_total_equity, total_investments, total_debt, net_debt, link, final_link
+    date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period, cash_and_cash_equivalents, short_term_investments, cash_and_short_term_investments, net_receivables, inventory, other_current_assets, total_current_assets, property_plant_equipment_net, goodwill, intangible_assets, goodwill_and_intangible_assets, long_term_investments, tax_assets, other_non_current_assets, total_non_current_assets, other_assets, total_assets, account_payables, short_term_debt, tax_payables, deferred_revenue, other_current_liabilities, total_current_liabilities, long_term_debt, deferred_revenue_non_current, deferred_tax_liabilities_non_current, other_non_current_liabilities, total_non_current_liabilities, other_liabilities, capital_lease_obligations, total_liabilities, preferred_stock, common_stock, retained_earnings, accumulated_other_comprehensive_income_loss, other_total_stockholders_equity, total_stockholders_equity, total_equity, total_liabilities_and_stockholders_equity, minority_interest, total_liabilities_and_total_equity, total_investments, total_debt, net_debt, link, final_link, record_date
   )
   VALUES
     ${values.join(", ")}
@@ -1549,6 +1554,8 @@ export const getCashFlowA = async (req, res) => {
       symbols = req.body.symbols;
       period = req.params.period;
     }
+
+    const currentDate = new Date().toISOString().split("T")[0];
 
     const endpointBase =
       "https://financialmodelingprep.com/api/v3/cash-flow-statement/";
@@ -1657,14 +1664,14 @@ export const getCashFlowA = async (req, res) => {
     ${item.capitalExpenditure}, 
     ${item.freeCashFlow}, 
     '${item.link}', 
-    '${item.finalLink}'
+    '${item.finalLink}', '${currentDate}'
   )`;
           });
 
         if (values.length > 0) {
           const query = `
   INSERT INTO web_financial.cash_flow_statement (
-    date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period, net_income, depreciation_and_amortization, deferred_income_tax, stock_based_compensation, change_in_working_capital, accounts_receivables, inventory, accounts_payables, other_working_capital, other_non_cash_items, net_cash_provided_by_operating_activities, investments_in_property_plant_and_equipment, acquisitions_net, purchases_of_investments, sales_maturities_of_investments, other_investing_activities, net_cash_used_for_investing_activities, debt_repayment, common_stock_issued, common_stock_repurchased, dividends_paid, other_financing_activities, net_cash_used_provided_by_financing_activities, effect_of_forex_changes_on_cash, net_change_in_cash, cash_at_end_of_period, cash_at_beginning_of_period, operating_cash_flow, capital_expenditure, free_cash_flow, link, final_link
+    date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period, net_income, depreciation_and_amortization, deferred_income_tax, stock_based_compensation, change_in_working_capital, accounts_receivables, inventory, accounts_payables, other_working_capital, other_non_cash_items, net_cash_provided_by_operating_activities, investments_in_property_plant_and_equipment, acquisitions_net, purchases_of_investments, sales_maturities_of_investments, other_investing_activities, net_cash_used_for_investing_activities, debt_repayment, common_stock_issued, common_stock_repurchased, dividends_paid, other_financing_activities, net_cash_used_provided_by_financing_activities, effect_of_forex_changes_on_cash, net_change_in_cash, cash_at_end_of_period, cash_at_beginning_of_period, operating_cash_flow, capital_expenditure, free_cash_flow, link, final_link, record_date
   )
   VALUES
     ${values.join(", ")}
@@ -1722,6 +1729,7 @@ export const getKeyMetricsA = async (req, res) => {
       symbols = req.body.symbols;
       period = req.params.period;
     }
+    const currentDate = new Date().toISOString().split("T")[0];
 
     const endpointBase =
       "https://financialmodelingprep.com/api/v3/key-metrics/";
@@ -1853,14 +1861,14 @@ export const getKeyMetricsA = async (req, res) => {
     ${item.payablesTurnover}, 
     ${item.inventoryTurnover}, 
     ${item.roe}, 
-    ${item.capexPerShare}
+    ${item.capexPerShare}, '${currentDate}'
   )`;
           });
 
         if (values.length > 0) {
           const query = `
   INSERT INTO web_financial.key_metrics (
-    symbol, date, calendar_year, period, revenue_per_share, net_income_per_share, operating_cash_flow_per_share, free_cash_flow_per_share, cash_per_share, book_value_per_share, tangible_book_value_per_share, shareholders_equity_per_share, interest_debt_per_share, market_cap, enterprise_value, pe_ratio, price_to_sales_ratio, pocf_ratio, pfcf_ratio, pb_ratio, ptb_ratio, ev_to_sales, enterprise_value_over_ebitda, ev_to_operating_cash_flow, ev_to_free_cash_flow, earnings_yield, free_cash_flow_yield, debt_to_equity, debt_to_assets, net_debt_to_ebitda, current_ratio, interest_coverage, income_quality, dividend_yield, payout_ratio, sales_general_and_administrative_to_revenue, research_and_development_to_revenue, intangibles_to_total_assets, capex_to_operating_cash_flow, capex_to_revenue, capex_to_depreciation, stock_based_compensation_to_revenue, graham_number, roic, return_on_tangible_assets, graham_net_net, working_capital, tangible_asset_value, net_current_asset_value, invested_capital, average_receivables, average_payables, average_inventory, days_sales_outstanding, days_payables_outstanding, days_of_inventory_on_hand, receivables_turnover, payables_turnover, inventory_turnover, roe, capex_per_share
+    symbol, date, calendar_year, period, revenue_per_share, net_income_per_share, operating_cash_flow_per_share, free_cash_flow_per_share, cash_per_share, book_value_per_share, tangible_book_value_per_share, shareholders_equity_per_share, interest_debt_per_share, market_cap, enterprise_value, pe_ratio, price_to_sales_ratio, pocf_ratio, pfcf_ratio, pb_ratio, ptb_ratio, ev_to_sales, enterprise_value_over_ebitda, ev_to_operating_cash_flow, ev_to_free_cash_flow, earnings_yield, free_cash_flow_yield, debt_to_equity, debt_to_assets, net_debt_to_ebitda, current_ratio, interest_coverage, income_quality, dividend_yield, payout_ratio, sales_general_and_administrative_to_revenue, research_and_development_to_revenue, intangibles_to_total_assets, capex_to_operating_cash_flow, capex_to_revenue, capex_to_depreciation, stock_based_compensation_to_revenue, graham_number, roic, return_on_tangible_assets, graham_net_net, working_capital, tangible_asset_value, net_current_asset_value, invested_capital, average_receivables, average_payables, average_inventory, days_sales_outstanding, days_payables_outstanding, days_of_inventory_on_hand, receivables_turnover, payables_turnover, inventory_turnover, roe, capex_per_share, record_date
   )
   VALUES
     ${values.join(", ")}
@@ -1918,6 +1926,8 @@ export const getRatiosA = async (req, res) => {
       symbols = req.body.symbols;
       period = req.params.period;
     }
+
+    const currentDate = new Date().toISOString().split("T")[0];
 
     const endpointBase = "https://financialmodelingprep.com/api/v3/ratios/";
 
@@ -2043,7 +2053,7 @@ export const getRatiosA = async (req, res) => {
     ${item.priceSalesRatio},
     ${item.dividendYield},
     ${item.enterpriseValueMultiple},
-    ${item.priceFairValue}
+    ${item.priceFairValue}, '${currentDate}'
   )`;
           });
 
@@ -2055,7 +2065,7 @@ export const getRatiosA = async (req, res) => {
   gross_profit_margin, operating_profit_margin, pretax_profit_margin, net_profit_margin, effective_tax_rate,
   return_on_assets, return_on_equity, return_on_capital_employed, net_income_per_ebt, ebt_per_ebit, ebit_per_revenue, debt_ratio, debt_equity_ratio, long_term_debt_to_capitalization, total_debt_to_capitalization, interest_coverage, cash_flow_to_debt_ratio, company_equity_multiplier, receivables_turnover, payables_turnover, inventory_turnover, fixed_asset_turnover, asset_turnover, operating_cash_flow_per_share, free_cash_flow_per_share, cash_per_share, payout_ratio, operating_cash_flow_sales_ratio, free_cash_flow_operating_cash_flow_ratio, cash_flow_coverage_ratios,
   short_term_coverage_ratios, capital_expenditure_coverage_ratio, dividend_paid_and_capex_coverage_ratio,
-  price_book_value_ratio, price_to_book_ratio, price_to_sales_ratio, price_earnings_ratio, price_to_free_cash_flows_ratio, price_to_operating_cash_flows_ratio, price_cash_flow_ratio, price_earnings_to_growth_ratio, price_sales_ratio, dividend_yield, enterprise_value_multiple, price_fair_value
+  price_book_value_ratio, price_to_book_ratio, price_to_sales_ratio, price_earnings_ratio, price_to_free_cash_flows_ratio, price_to_operating_cash_flows_ratio, price_cash_flow_ratio, price_earnings_to_growth_ratio, price_sales_ratio, dividend_yield, enterprise_value_multiple, price_fair_value, record_date
   )
   VALUES
     ${values.join(", ")}
@@ -2127,6 +2137,9 @@ export const getIncomeStatement = async (req, res) => {
       periodFilter = "period = 'FY'";
     }
 
+    // Obtener la fecha actual en formato 'AAAA-MM-DD'
+    const currentDate = new Date().toISOString().split("T")[0];
+
     // Obtener el último filling_date solo para los símbolos en tu lista
     const lastFillingDates = await pool.query(
       "SELECT symbol, MAX(filling_date) AS last_filling_date " +
@@ -2192,7 +2205,7 @@ export const getIncomeStatement = async (req, res) => {
       ${item.ebitda}, ${item.ebitdaratio}, ${item.operatingIncome}, ${item.operatingIncomeRatio},
       ${item.totalOtherIncomeExpensesNet}, ${item.incomeBeforeTax}, ${item.incomeBeforeTaxRatio},
       ${item.incomeTaxExpense}, ${item.netIncome}, ${item.netIncomeRatio}, ${item.eps}, ${item.epsdiluted},
-      ${item.weightedAverageShsOut}, ${item.weightedAverageShsOutDil}, '${item.link}', '${item.finalLink}'
+      ${item.weightedAverageShsOut}, ${item.weightedAverageShsOutDil}, '${item.link}', '${item.finalLink}' , '${currentDate}' 
     )`;
           });
 
@@ -2205,7 +2218,7 @@ export const getIncomeStatement = async (req, res) => {
               selling_and_marketing_expenses, selling_general_and_administrative_expenses, other_expenses,
               operating_expenses, cost_and_expenses, interest_income, interest_expense, depreciation_and_amortization, ebitda, ebitda_ratio,
               operating_income, operating_income_ratio, total_other_income_expenses_net, income_before_tax, income_before_tax_ratio, income_tax_expense,
-              net_income, net_income_ratio, eps, eps_diluted, weighted_average_shs_out, weighted_average_shs_out_dil, link, final_link
+              net_income, net_income_ratio, eps, eps_diluted, weighted_average_shs_out, weighted_average_shs_out_dil, link, final_link, record_date
             )
             
             VALUES
@@ -2270,6 +2283,8 @@ export const getBalanceSheet = async (req, res) => {
       symbols = req.body.symbols;
       period = req.params.period;
     }
+
+    const currentDate = new Date().toISOString().split("T")[0];
 
     const endpointBase =
       "https://financialmodelingprep.com/api/v3/balance-sheet-statement/";
@@ -2353,14 +2368,14 @@ export const getBalanceSheet = async (req, res) => {
     ${item.preferredStock}, ${item.commonStock}, ${item.retainedEarnings}, ${item.accumulatedOtherComprehensiveIncomeLoss},
     ${item.othertotalStockholdersEquity}, ${item.totalStockholdersEquity}, ${item.totalEquity}, ${item.totalLiabilitiesAndStockholdersEquity},
     ${item.minorityInterest}, ${item.totalLiabilitiesAndTotalEquity}, ${item.totalInvestments}, ${item.totalDebt},
-    ${item.netDebt}, '${item.link}', '${item.finalLink}'
+    ${item.netDebt}, '${item.link}', '${item.finalLink}', '${currentDate}'
   )`;
           });
 
         if (values.length > 0) {
           const query = `
   INSERT INTO web_financial.balance_sheet(
-    date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period, cash_and_cash_equivalents, short_term_investments, cash_and_short_term_investments, net_receivables, inventory, other_current_assets, total_current_assets, property_plant_equipment_net, goodwill, intangible_assets, goodwill_and_intangible_assets, long_term_investments, tax_assets, other_non_current_assets, total_non_current_assets, other_assets, total_assets, account_payables, short_term_debt, tax_payables, deferred_revenue, other_current_liabilities, total_current_liabilities, long_term_debt, deferred_revenue_non_current, deferred_tax_liabilities_non_current, other_non_current_liabilities, total_non_current_liabilities, other_liabilities, capital_lease_obligations, total_liabilities, preferred_stock, common_stock, retained_earnings, accumulated_other_comprehensive_income_loss, other_total_stockholders_equity, total_stockholders_equity, total_equity, total_liabilities_and_stockholders_equity, minority_interest, total_liabilities_and_total_equity, total_investments, total_debt, net_debt, link, final_link
+    date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period, cash_and_cash_equivalents, short_term_investments, cash_and_short_term_investments, net_receivables, inventory, other_current_assets, total_current_assets, property_plant_equipment_net, goodwill, intangible_assets, goodwill_and_intangible_assets, long_term_investments, tax_assets, other_non_current_assets, total_non_current_assets, other_assets, total_assets, account_payables, short_term_debt, tax_payables, deferred_revenue, other_current_liabilities, total_current_liabilities, long_term_debt, deferred_revenue_non_current, deferred_tax_liabilities_non_current, other_non_current_liabilities, total_non_current_liabilities, other_liabilities, capital_lease_obligations, total_liabilities, preferred_stock, common_stock, retained_earnings, accumulated_other_comprehensive_income_loss, other_total_stockholders_equity, total_stockholders_equity, total_equity, total_liabilities_and_stockholders_equity, minority_interest, total_liabilities_and_total_equity, total_investments, total_debt, net_debt, link, final_link, record_date
   )
   VALUES
     ${values.join(", ")}
@@ -2422,6 +2437,8 @@ export const getCashFlow = async (req, res) => {
       symbols = req.body.symbols;
       period = req.params.period;
     }
+
+    const currentDate = new Date().toISOString().split("T")[0];
 
     const endpointBase =
       "https://financialmodelingprep.com/api/v3/cash-flow-statement/";
@@ -2530,14 +2547,14 @@ export const getCashFlow = async (req, res) => {
     ${item.capitalExpenditure}, 
     ${item.freeCashFlow}, 
     '${item.link}', 
-    '${item.finalLink}'
+    '${item.finalLink}', '${currentDate}'
   )`;
           });
 
         if (values.length > 0) {
           const query = `
   INSERT INTO web_financial.cash_flow_statement (
-    date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period, net_income, depreciation_and_amortization, deferred_income_tax, stock_based_compensation, change_in_working_capital, accounts_receivables, inventory, accounts_payables, other_working_capital, other_non_cash_items, net_cash_provided_by_operating_activities, investments_in_property_plant_and_equipment, acquisitions_net, purchases_of_investments, sales_maturities_of_investments, other_investing_activities, net_cash_used_for_investing_activities, debt_repayment, common_stock_issued, common_stock_repurchased, dividends_paid, other_financing_activities, net_cash_used_provided_by_financing_activities, effect_of_forex_changes_on_cash, net_change_in_cash, cash_at_end_of_period, cash_at_beginning_of_period, operating_cash_flow, capital_expenditure, free_cash_flow, link, final_link
+    date, symbol, reported_currency, cik, filling_date, accepted_date, calendar_year, period, net_income, depreciation_and_amortization, deferred_income_tax, stock_based_compensation, change_in_working_capital, accounts_receivables, inventory, accounts_payables, other_working_capital, other_non_cash_items, net_cash_provided_by_operating_activities, investments_in_property_plant_and_equipment, acquisitions_net, purchases_of_investments, sales_maturities_of_investments, other_investing_activities, net_cash_used_for_investing_activities, debt_repayment, common_stock_issued, common_stock_repurchased, dividends_paid, other_financing_activities, net_cash_used_provided_by_financing_activities, effect_of_forex_changes_on_cash, net_change_in_cash, cash_at_end_of_period, cash_at_beginning_of_period, operating_cash_flow, capital_expenditure, free_cash_flow, link, final_link, record_date
   )
   VALUES
     ${values.join(", ")}
@@ -2598,6 +2615,8 @@ export const getKeyMetrics = async (req, res) => {
       symbols = req.body.symbols;
       period = req.params.period;
     }
+
+    const currentDate = new Date().toISOString().split("T")[0];
 
     const endpointBase =
       "https://financialmodelingprep.com/api/v3/key-metrics/";
@@ -2729,14 +2748,14 @@ export const getKeyMetrics = async (req, res) => {
     ${item.payablesTurnover}, 
     ${item.inventoryTurnover}, 
     ${item.roe}, 
-    ${item.capexPerShare}
+    ${item.capexPerShare}, '${currentDate}'
   )`;
           });
 
         if (values.length > 0) {
           const query = `
   INSERT INTO web_financial.key_metrics (
-    symbol, date, calendar_year, period, revenue_per_share, net_income_per_share, operating_cash_flow_per_share, free_cash_flow_per_share, cash_per_share, book_value_per_share, tangible_book_value_per_share, shareholders_equity_per_share, interest_debt_per_share, market_cap, enterprise_value, pe_ratio, price_to_sales_ratio, pocf_ratio, pfcf_ratio, pb_ratio, ptb_ratio, ev_to_sales, enterprise_value_over_ebitda, ev_to_operating_cash_flow, ev_to_free_cash_flow, earnings_yield, free_cash_flow_yield, debt_to_equity, debt_to_assets, net_debt_to_ebitda, current_ratio, interest_coverage, income_quality, dividend_yield, payout_ratio, sales_general_and_administrative_to_revenue, research_and_development_to_revenue, intangibles_to_total_assets, capex_to_operating_cash_flow, capex_to_revenue, capex_to_depreciation, stock_based_compensation_to_revenue, graham_number, roic, return_on_tangible_assets, graham_net_net, working_capital, tangible_asset_value, net_current_asset_value, invested_capital, average_receivables, average_payables, average_inventory, days_sales_outstanding, days_payables_outstanding, days_of_inventory_on_hand, receivables_turnover, payables_turnover, inventory_turnover, roe, capex_per_share
+    symbol, date, calendar_year, period, revenue_per_share, net_income_per_share, operating_cash_flow_per_share, free_cash_flow_per_share, cash_per_share, book_value_per_share, tangible_book_value_per_share, shareholders_equity_per_share, interest_debt_per_share, market_cap, enterprise_value, pe_ratio, price_to_sales_ratio, pocf_ratio, pfcf_ratio, pb_ratio, ptb_ratio, ev_to_sales, enterprise_value_over_ebitda, ev_to_operating_cash_flow, ev_to_free_cash_flow, earnings_yield, free_cash_flow_yield, debt_to_equity, debt_to_assets, net_debt_to_ebitda, current_ratio, interest_coverage, income_quality, dividend_yield, payout_ratio, sales_general_and_administrative_to_revenue, research_and_development_to_revenue, intangibles_to_total_assets, capex_to_operating_cash_flow, capex_to_revenue, capex_to_depreciation, stock_based_compensation_to_revenue, graham_number, roic, return_on_tangible_assets, graham_net_net, working_capital, tangible_asset_value, net_current_asset_value, invested_capital, average_receivables, average_payables, average_inventory, days_sales_outstanding, days_payables_outstanding, days_of_inventory_on_hand, receivables_turnover, payables_turnover, inventory_turnover, roe, capex_per_share, record_date
   )
   VALUES
     ${values.join(", ")}
@@ -2796,6 +2815,8 @@ export const getRatios = async (req, res) => {
       symbols = req.body.symbols;
       period = req.params.period;
     }
+
+    const currentDate = new Date().toISOString().split("T")[0];
 
     const endpointBase = "https://financialmodelingprep.com/api/v3/ratios/";
 
@@ -2921,7 +2942,7 @@ export const getRatios = async (req, res) => {
     ${item.priceSalesRatio},
     ${item.dividendYield},
     ${item.enterpriseValueMultiple},
-    ${item.priceFairValue}
+    ${item.priceFairValue}, '${currentDate}'
   )`;
           });
 
@@ -2933,7 +2954,7 @@ export const getRatios = async (req, res) => {
   gross_profit_margin, operating_profit_margin, pretax_profit_margin, net_profit_margin, effective_tax_rate,
   return_on_assets, return_on_equity, return_on_capital_employed, net_income_per_ebt, ebt_per_ebit, ebit_per_revenue, debt_ratio, debt_equity_ratio, long_term_debt_to_capitalization, total_debt_to_capitalization, interest_coverage, cash_flow_to_debt_ratio, company_equity_multiplier, receivables_turnover, payables_turnover, inventory_turnover, fixed_asset_turnover, asset_turnover, operating_cash_flow_per_share, free_cash_flow_per_share, cash_per_share, payout_ratio, operating_cash_flow_sales_ratio, free_cash_flow_operating_cash_flow_ratio, cash_flow_coverage_ratios,
   short_term_coverage_ratios, capital_expenditure_coverage_ratio, dividend_paid_and_capex_coverage_ratio,
-  price_book_value_ratio, price_to_book_ratio, price_to_sales_ratio, price_earnings_ratio, price_to_free_cash_flows_ratio, price_to_operating_cash_flows_ratio, price_cash_flow_ratio, price_earnings_to_growth_ratio, price_sales_ratio, dividend_yield, enterprise_value_multiple, price_fair_value
+  price_book_value_ratio, price_to_book_ratio, price_to_sales_ratio, price_earnings_ratio, price_to_free_cash_flows_ratio, price_to_operating_cash_flows_ratio, price_cash_flow_ratio, price_earnings_to_growth_ratio, price_sales_ratio, dividend_yield, enterprise_value_multiple, price_fair_value, record_date
   )
   VALUES
     ${values.join(", ")}
@@ -4154,6 +4175,109 @@ export const getNominalUsDollarIndex = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Error al obtener los precios de los Datos Economicos",
+    });
+  }
+};
+
+export const getFullPrice = async (req, res) => {
+  try {
+    // Obtener la fecha de ayer
+    const currentDate = new Date();
+    currentDate.setDate(currentDate.getDate() - 1);
+    const yesterday = currentDate.toISOString().split("T")[0];
+
+    // Capturar los símbolos de criptomonedas y el período desde el cuerpo de la solicitud
+    const symbols = req.body.symbols; // Ejemplo: ['BTCUSD', 'ETHUSD']
+
+    console.log(symbols);
+    const fromDate = req.query.from || yesterday;
+    const toDate = req.query.to || fromDate;
+
+    const endpointBase =
+      "https://financialmodelingprep.com/api/v3/historical-price-full/";
+
+    // Variables para el seguimiento de éxito y fallos
+    let count = 0;
+    let success = 0;
+    let failure = 0;
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); // Función para hacer una pausa entre llamados
+
+    for (const symbol of symbols) {
+      const endpoint = `${endpointBase}${symbol}?from=${fromDate}&to=${toDate}&apikey=${api_key}`;
+      console.log(endpoint);
+
+      try {
+        const response = await fetch(endpoint);
+        if (!response.ok) {
+          failure++;
+          continue;
+        }
+
+        const data = await response.json();
+        const historicalData = data.historical;
+
+        if (!historicalData || historicalData.length === 0) {
+          failure++;
+          continue;
+        }
+
+        //console.log(data);
+        // Preparar los valores para la inserción en la base de datos
+        const values = historicalData
+          .map(
+            (item) => `(
+          '${symbol}',
+          '${item.date}',
+          ${item.open},
+          ${item.high},
+          ${item.low},
+          ${item.close},      
+          ${item.volume},
+          ${item.change},
+          ${item.changePercent / 100}
+
+        )`
+          )
+          .join(", ");
+
+        const insertQuery = `
+          INSERT INTO web_financial.stock_price_history (
+            symbol, date, open, high, low, close, volume, change, change_percent
+          ) VALUES ${values};
+        `;
+
+        //console.log(values);
+        // Ejecutar la consulta de inserción
+        await pool.query(insertQuery);
+        success++;
+      } catch (error) {
+        console.error(error);
+        failure++;
+      }
+
+      // Hacer una pausa de 4 segundos entre cada llamado a la API
+      count++;
+      if (count % 1500 === 0) {
+        console.log(
+          `Límite de llamados alcanzado. Haciendo una pausa de 1 minuto.`
+        );
+        await delay(60000); // Pausa de 1 minuto (60,000 ms)
+      } else {
+        await delay(4000); // Pausa de 4 segundos (4,000 ms)
+      }
+    }
+
+    // Devolver una respuesta con el resultado
+    return res.json({
+      success: true,
+      message: `Llamados exitosos: ${success}, Llamados fallidos: ${failure}`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Error al obtener los precios de las criptomonedas",
     });
   }
 };

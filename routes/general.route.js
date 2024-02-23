@@ -23,6 +23,7 @@ import {
   getEconomicsData,
   getNominalUsDollarIndex,
   getTickerIndices,
+  getFullPrice,
 } from "../controllers/historical.controller.js";
 import { requireToken } from "../middlewares/requireToken.js";
 const router = Router();
@@ -45,6 +46,8 @@ router.post("/KeyMetrics/:period", getKeyMetricsA);
 router.post("/Ratios/:period", getRatiosA);
 router.post("/Estimates/:period", getEstimates);
 router.post("/Crypto", getCryptoPrice);
+router.post("/FullPrice", getFullPrice);
+
 router.post("/Commodities", getCommoditiesPrice);
 router.post("/Economics", getEconomicsData);
 router.post("/EconomicsDollarIndex", getNominalUsDollarIndex);
