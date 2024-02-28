@@ -4118,12 +4118,13 @@ export const getNominalUsDollarIndex = async (req, res) => {
 
         // Preparar los valores para la inserción en la base de datos
         const values = filteredHistoricalData
+          .filter((item) => item.value !== ".") // Filtra para mantener solo valores numéricos válidos
           .map(
             (item) => `(
-        '${symbol}',
-        '${item.date}',
-        ${item.value}
-      )`
+    '${symbol}',
+    '${item.date}',
+    ${item.value}
+  )`
           )
           .join(", ");
 
