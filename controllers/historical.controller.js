@@ -3976,37 +3976,60 @@ export const getEconomicsData = async (req, res) => {
           continue;
         }
 
-        // Preparar los valores para la inserción en la base de datos
-        const values = filteredHistoricalData
-          .map(
-            (item) => `(
-        '${symbol}',
-        '${item.date}',
-        ${item.value}
-      )`
-          )
-          .join(", ");
+        // Inicializar la variable para almacenar los valores para la inserción
+        let insertValues = [];
 
-        // Preparar los valores para la inserción en la base de datos insercion de la totalidad
-        /* const values = historicalData
-          .map(
-            (item) => `(
-        '${symbol}',
-        '${item.date}',
-        ${item.value}
-      )`
-          )
-          .join(", "); */
+        for (const item of filteredHistoricalData) {
+          let annualRate = null;
 
-        const insertQuery = `
-          INSERT INTO web_financial.datos_economicos (
-            symbol, date, value
-          ) VALUES ${values};
-        `;
+          if (symbol === "CPIAUCSL") {
+            // console.log(item.date); // Esta línea se eliminará ya que ahora sí tenemos item disponible
 
-        // Ejecutar la consulta de inserción
-        await pool.query(insertQuery);
-        success++;
+            // Obtener el valor anterior del mismo mes del año pasado
+            const lastYearDate = new Date(item.date);
+            lastYearDate.setFullYear(lastYearDate.getFullYear() - 1);
+            const lastYearDateString = lastYearDate.toISOString().split("T")[0];
+
+            const lastYearValueQuery = `
+      SELECT value
+      FROM web_financial.datos_economicos
+      WHERE symbol = '${symbol}' AND date = '${lastYearDateString}';
+    `;
+
+            const lastYearValueResult = await pool.query(lastYearValueQuery);
+            const lastYearValue =
+              lastYearValueResult.rows.length > 0
+                ? parseFloat(lastYearValueResult.rows[0].value)
+                : null;
+
+            // Calcular la variación anual si existe un valor anterior
+            if (lastYearValue !== null) {
+              annualRate =
+                (parseFloat(item.value) - lastYearValue) / lastYearValue;
+            }
+          }
+
+          // Preparar los valores para la inserción en la base de datos
+          const valueString =
+            annualRate !== null ? `${annualRate.toFixed(4)}` : "NULL";
+          console.log(valueString);
+
+          insertValues.push(
+            `('${symbol}', '${item.date}', ${item.value}, ${valueString})`
+          );
+        }
+
+        if (insertValues.length > 0) {
+          const insertQuery = `
+    INSERT INTO web_financial.datos_economicos (
+      symbol, date, value, annual_rate
+    ) VALUES ${insertValues.join(", ")};
+  `;
+
+          // Ejecutar la consulta de inserción
+          await pool.query(insertQuery);
+          success++;
+        }
       } catch (error) {
         console.error(error);
         failure++;
