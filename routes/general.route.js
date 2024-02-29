@@ -24,6 +24,8 @@ import {
   getNominalUsDollarIndex,
   getTickerIndices,
   getFullPrice,
+  getErp,
+  reportStatements,
 } from "../controllers/historical.controller.js";
 import { requireToken } from "../middlewares/requireToken.js";
 const router = Router();
@@ -35,6 +37,8 @@ router.get("/preassure", getAverage);
 router.post("/industrias", requireToken, getIndustrias);
 router.post("/subIndustrias", requireToken, getSubIndustrias);
 router.get("/tickerIndices", getTickerIndices);
+router.get("/erp", getErp);
+router.get("/reportStatements", reportStatements);
 
 router.post("/profile", newProfile);
 router.post("/AllStatement", getAndCallStatements);

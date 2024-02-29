@@ -4305,3 +4305,74 @@ export const getFullPrice = async (req, res) => {
     });
   }
 };
+
+export const getErp = async (req, res) => {
+  try {
+    const response = await pool.query(
+      `WITH Inflation AS (
+SELECT AVG(annual_rate) / 100 AS avg_annual_inflation_rate
+  FROM web_financial.datos_economicos
+  WHERE symbol = 'CPIAUCSL' AND date >= '2022-04-11' AND annual_rate IS NOT NULL
+		
+),
+SP500_Real_Returns AS (
+  SELECT (EXP(SUM(LN(1 + change_percentage)) / COUNT(change_percentage)) - 1) * 252 AS annualized_real_return
+  FROM web_financial.tos_historical_prices_indices
+  WHERE ticker = 'SPX' AND date >= '2022-04-11' 
+),
+Treasury_Real_Rate AS (
+  SELECT AVG(price) / 100 - (SELECT avg_annual_inflation_rate FROM Inflation) AS avg_real_risk_free_rate
+  FROM web_financial.bonos_historical_prices
+  WHERE ticker = 'U.S. 10Y' AND date >=  '2022-04-11' 
+)
+SELECT
+  (SELECT annualized_real_return FROM SP500_Real_Returns) -
+  (SELECT avg_real_risk_free_rate FROM Treasury_Real_Rate) AS equity_risk_premium_adjusted_for_inflation;`
+    );
+
+    if (!response.rows) throw { code: 11000 };
+    return res.json(response.rows);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "error de servidor" });
+  }
+};
+
+export const reportStatements = async (req, res) => {
+  try {
+    const response = await pool.query(
+      `SELECT 'Income Statement' AS report_type, period, COUNT(*) AS total_registros, calendar_year
+FROM web_financial.income_statement
+WHERE calendar_year IN ('2023', '2022') AND period NOT LIKE 'FY%'
+GROUP BY period, calendar_year
+UNION
+SELECT 'Balance Sheet' AS report_type, period, COUNT(*) AS total_registros, calendar_year
+FROM web_financial.balance_sheet
+WHERE calendar_year IN ('2023', '2022') AND period NOT LIKE 'FY%'
+GROUP BY period, calendar_year
+UNION
+SELECT 'Cash Flow' AS report_type, period, COUNT(*) AS total_registros, calendar_year
+FROM web_financial.cash_flow_statement
+WHERE calendar_year IN ('2023', '2022') AND period NOT LIKE 'FY%'
+GROUP BY period, calendar_year
+UNION
+SELECT 'Financial Ratios' AS report_type, period, COUNT(*) AS total_registros, calendar_year
+FROM web_financial.financial_ratios
+WHERE calendar_year IN ('2023', '2022') AND period NOT LIKE 'FY%'
+GROUP BY period, calendar_year
+UNION
+SELECT 'Key Metrics' AS report_type, period, COUNT(*) AS total_registros, calendar_year
+FROM web_financial.key_metrics
+WHERE calendar_year IN ('2023', '2022') AND period NOT LIKE 'FY%'
+GROUP BY period, calendar_year
+order by report_type, calendar_year, period;
+`
+    );
+
+    if (!response.rows) throw { code: 11000 };
+    return res.json(response.rows);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "error de servidor" });
+  }
+};
