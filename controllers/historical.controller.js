@@ -3033,7 +3033,7 @@ export const getAndCallStatements = async (req, res) => {
     WHERE date is not null AND period != 'FY' ORDER BY symbol, date DESC
   ) i
   ON t.ticker = i.symbol AND t.quarter = i.period
-  WHERE cast (t.date as date) >= (select CURRENT_DATE - ${days})
+  WHERE cast (t.date as date) between (select CURRENT_DATE - ${days}) AND (select CURRENT_DATE - 3)
   AND i.symbol IS NULL
 `;
     const tickerQueryBalance = `
