@@ -423,7 +423,7 @@ WHERE date = (select max(date)FROM web_financial.presion_volumen) `
 const getReportFasesLastDay = async (req, res) => {
   try {
     const response = await pool.query(
-      ` SELECT * FROM web_financial.market_analysis_reports_fases ORDER BY date DESC LIMIT 1`
+      ` SELECT * FROM web_financial.market_analysis_reports_fases ORDER BY report_date DESC LIMIT 1`
     );
     if (!response.rows) throw { code: 11000 };
     return res.json(response.rows);
