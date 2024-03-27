@@ -640,23 +640,22 @@ GROUP BY date order by date desc limit 15 `
         const formattedData = formatDataForPrompt(historicoFases.rows);
         // Crear el prompt para la API
         const prompt = `
-    Título: Evaluación de Tendencias del Mercado Basada en Datos SQL
+Título: Resumen de Tendencias del Mercado en 15 Días
 
-    Descripción: Realiza un análisis detallado de las siguientes series de datos que representan las fases del mercado de valores durante los últimos 15 días. Estos reflejan el conteo diario de acciones por fase del mercado, derivado de una consulta SQL. El objetivo es identificar patrones y obtener insights que informen la toma de decisiones de inversión.
+Descripción: Con base en datos de las fases del mercado de valores de los últimos 15 días, proporciona un resumen claro y conciso. Estos datos reflejan el conteo diario de acciones clasificadas por fase del mercado (Acumulación, Avance, Corrección, Distribución), derivados de una consulta SQL. Se busca identificar patrones clave y obtener insights relevantes para la toma de decisiones de inversión.
 
-    Entrada de Datos: [
-    ${formattedData}]
+Entrada de Datos:
+${formattedData}
 
-    Tareas:
-    1. Analizar los datos por día para determinar las tendencias dominantes en las fases del mercado.
-    2. Indicar patrones significativos en la transición entre fases.
-    3. Comentar sobre el balance entre las fases y sus implicaciones para la salud del mercado.
-    4. Ofrecer interpretaciones de los movimientos en las fases de Acumulación y Distribución y su impacto en las estrategias de inversión.
-    5. Integrar conocimientos del Indicador RSI para corroborar los patrones observados.
+Tareas:
+1. Resumir las tendencias dominantes observadas en las fases del mercado.
+2. Destacar cualquier patrón significativo en la transición entre fases.
+3. Comentar brevemente sobre el balance entre las fases y qué indica sobre el estado actual del mercado.
+4. Proveer insights concisos sobre las implicaciones de las fases de Acumulación y Distribución para las estrategias de inversión.
+5. Utilizar el Indicador RSI para apoyar la interpretación de los patrones de las fases.
 
-
-    Resultado esperado: Un resumen conciso que utilice un enfoque holístico para interpretar las fases del mercado y su interacción con el Indicador RSI, resaltando las implicaciones para la toma de decisiones de inversión basadas en el análisis de datos.
-    `;
+Resultado esperado: Proporciona un abstract de maximo 100 palabras que sintetice las tendencias del mercado, los patrones entre las fases, y cómo estos pueden influir en las decisiones de inversión. Enfócate en ser puntual, claro, directo, holistico que lleve una facil comprensión del estado actual del mercado y posibles acciones a seguir.
+`;
 
         const analysis = await generateOpenAIReport(prompt);
 
