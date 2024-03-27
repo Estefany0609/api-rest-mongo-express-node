@@ -351,7 +351,10 @@ const getMacdData = async (req, res) => {
 const getInformes = async (req, res) => {
   try {
     const response = await pool.query(
-      "SELECT report_date, report FROM web_financial.market_sentiment_reports order by report_date desc"
+      `(SELECT report_date, report, 'Fases' AS report_type FROM web_financial.market_sentiment_reports)
+UNION
+(SELECT cast(report_date as varchar), report, 'Mercado' AS report_type FROM web_financial.market_analysis_reports_fases)
+ORDER BY report_date DESC, report_type ;`
     );
     if (!response.rows) throw { code: 11000 };
     return res.json(response.rows);
