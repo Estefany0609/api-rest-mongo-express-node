@@ -420,6 +420,19 @@ WHERE date = (select max(date)FROM web_financial.presion_volumen) `
   }
 };
 
+const getReportFasesLastDay = async (req, res) => {
+  try {
+    const response = await pool.query(
+      ` SELECT * FROM web_financial.market_analysis_reports_fases ORDER BY date DESC LIMIT 1`
+    );
+    if (!response.rows) throw { code: 11000 };
+    return res.json(response.rows);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: "error de servidor" });
+  }
+};
+
 const getCurrentDateFormatted = () => {
   const today = new Date();
   const year = today.getFullYear();
@@ -581,11 +594,107 @@ const generateOpenAIReport = async (prompt) => {
       max_tokens: 1000, // Ajusta según la necesidad
     });
 
-    console.log(completion.data.choices[0].message.content);
-    // Aquí podrías hacer algo más con el texto generado, como guardarlo o enviarlo
+    return completion.data.choices[0].message.content;
   } catch (error) {
     console.error("Error al llamar a la API de OpenAI:", error);
     throw error;
+  }
+};
+
+const reportDailyFases = async (req, res) => {
+  try {
+    const reportDate = new Date().toISOString().slice(0, 10);
+
+    // Ejecuta la consulta SQL para obtener las fases históricas
+    const historicoFases = await pool.query(
+      ` SELECT 
+  date,
+  SUM(CASE WHEN fase_principal_cp = 'acumulacion' THEN conteo ELSE 0 END) AS Acumulacion,
+  SUM(CASE WHEN fase_principal_cp = 'avance' THEN conteo ELSE 0 END) AS Avance,
+  SUM(CASE WHEN fase_principal_cp = 'correccion' THEN conteo ELSE 0 END) AS Correccion,
+  SUM(CASE WHEN fase_principal_cp = 'distribucion' THEN conteo ELSE 0 END) AS Distribucion
+FROM
+  ( SELECT date, fase_principal_cp, COUNT(*) AS conteo
+    FROM web_financial.fases_mercado f
+    JOIN web_financial.company_profile cp ON f.ticker = cp.ticker
+    WHERE cp.exchange != 'Other OTC' AND cp.isetf = 'false' AND cast(date as date) >= (SELECT CURRENT_DATE - 25)
+    GROUP BY date, fase_principal_cp
+  ) AS subquery
+GROUP BY date order by date desc limit 15 `
+    );
+
+    // Verifica si la última fecha obtenida es igual a la fecha actual
+    if (historicoFases.rows.length > 0) {
+      const lastDate = historicoFases.rows[0].date;
+      if (lastDate === reportDate) {
+        const formatDataForPrompt = (rows) => {
+          // Transforma cada objeto de datos en una cadena de texto
+          return rows
+            .map((row) => {
+              return `{Fecha: ${row.date}, Acumulación: ${row.acumulacion}, Avance: ${row.avance}, Corrección: ${row.correccion}, Distribución: ${row.distribucion}}`;
+            })
+            .join(", ");
+        };
+
+        // Formateamos los datos para el prompt
+        const formattedData = formatDataForPrompt(historicoFases.rows);
+        // Crear el prompt para la API
+        const prompt = `
+    Título: Evaluación de Tendencias del Mercado Basada en Datos SQL
+
+    Descripción: Realiza un análisis detallado de las siguientes series de datos que representan las fases del mercado de valores durante los últimos 15 días. Estos reflejan el conteo diario de acciones por fase del mercado, derivado de una consulta SQL. El objetivo es identificar patrones y obtener insights que informen la toma de decisiones de inversión.
+
+    Entrada de Datos: [
+    ${formattedData}]
+
+    Tareas:
+    1. Analizar los datos por día para determinar las tendencias dominantes en las fases del mercado.
+    2. Indicar patrones significativos en la transición entre fases.
+    3. Comentar sobre el balance entre las fases y sus implicaciones para la salud del mercado.
+    4. Ofrecer interpretaciones de los movimientos en las fases de Acumulación y Distribución y su impacto en las estrategias de inversión.
+    5. Integrar conocimientos del Indicador RSI para corroborar los patrones observados.
+
+
+    Resultado esperado: Un resumen conciso que utilice un enfoque holístico para interpretar las fases del mercado y su interacción con el Indicador RSI, resaltando las implicaciones para la toma de decisiones de inversión basadas en el análisis de datos.
+    `;
+
+        const analysis = await generateOpenAIReport(prompt);
+
+        // Si la función generateOpenAIReport devuelve una respuesta, inserta en la base de datos
+        if (analysis) {
+          const insertResult = await pool.query(
+            `INSERT INTO web_financial.market_analysis_reports_fases (report_date, report)
+             VALUES ($1, $2)
+             RETURNING *`,
+            [reportDate, analysis]
+          );
+
+          // Envía una respuesta al cliente con el análisis almacenado
+          res.status(200).json({
+            message: "Análisis almacenado correctamente",
+            /* data: insertResult.rows[0], */
+          });
+        } else {
+          // Manejar el caso en que no se obtuvo un análisis
+          res.status(500).json({ message: "No se pudo generar el análisis." });
+        }
+      } else {
+        // Si la fecha no coincide, enviar un mensaje de error
+        res.status(400).json({
+          message:
+            "La fecha más reciente de los datos no coincide con la fecha actual.",
+        });
+      }
+    } else {
+      // Manejar el caso en que no se obtuvieron filas en la consulta SQL
+      res.status(404).json({
+        message:
+          "No se encontraron datos históricos para las fases del mercado.",
+      });
+    }
+  } catch (error) {
+    console.error("Error al realizar la operación:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -611,4 +720,6 @@ export {
   getRocDetallados,
   getPressionLastDay,
   yourFunction,
+  getReportFasesLastDay,
+  reportDailyFases,
 };
